@@ -176,19 +176,8 @@ const Profile: React.FC = () => {
             value={formData.name}
             onChange={handleInputChange("name")}
             fullWidth
+            size="small"
             variant="outlined"
-          />
-
-          <TextField
-            label="Resume Prompt"
-            value={formData.instructions}
-            onChange={handleInputChange("instructions")}
-            fullWidth
-            multiline
-            rows={4}
-            variant="outlined"
-            helperText="This prompt is used when generating resumes"
-            sx={resizableMultilineSx}
           />
 
           <FormControl fullWidth variant="outlined" size="small">
@@ -206,6 +195,18 @@ const Profile: React.FC = () => {
               ))}
             </Select>
           </FormControl>
+
+          <TextField
+            label="Resume Prompt"
+            value={formData.instructions}
+            onChange={handleInputChange("instructions")}
+            fullWidth
+            multiline
+            rows={4}
+            variant="outlined"
+            helperText="This prompt is used when generating resumes"
+            sx={resizableMultilineSx}
+          />
 
           <TextField
             label="Answers Prompt"
@@ -233,6 +234,7 @@ const Profile: React.FC = () => {
             fullWidth
             variant="outlined"
             helperText="Required to change password"
+            size="small"
           />
 
           <TextField
@@ -243,6 +245,7 @@ const Profile: React.FC = () => {
             fullWidth
             variant="outlined"
             helperText="Leave blank to keep current password"
+            size="small"
           />
 
           <TextField
@@ -253,6 +256,7 @@ const Profile: React.FC = () => {
             fullWidth
             variant="outlined"
             helperText="Must match new password"
+            size="small"
           />
 
           {error && (

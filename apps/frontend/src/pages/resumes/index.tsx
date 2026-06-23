@@ -118,7 +118,7 @@ const Resumes: React.FC = () => {
     : "?";
 
   const displayName = userName.trim()
-    ? userName.trim()
+    ? userName.trim().split(" ")[0]
     : userEmail.split("@")[0] || "";
 
   const handleAvatarMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
