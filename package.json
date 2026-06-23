@@ -1,0 +1,25 @@
+{
+  "name": "resume-builder",
+  "private": true,
+  "version": "1.0.0",
+  "description": "AI resume tailor monorepo",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -k -n backend,frontend -c blue,magenta \"npm run start:dev -w resume-builder-backend\" \"npm run dev -w resume-builder-frontend\"",
+    "dev:backend": "npm run start:dev -w resume-builder-backend",
+    "dev:frontend": "npm run dev -w resume-builder-frontend",
+    "build": "npm run build -w resume-builder-backend && npm run build -w resume-builder-frontend",
+    "build:backend": "npm run build -w resume-builder-backend",
+    "build:frontend": "npm run build -w resume-builder-frontend",
+    "lint": "npm run lint -w resume-builder-backend && npm run lint -w resume-builder-frontend",
+    "test": "npm run test -w resume-builder-backend"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
