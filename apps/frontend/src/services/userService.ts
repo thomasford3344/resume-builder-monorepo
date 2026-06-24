@@ -30,6 +30,7 @@ export interface UserResponse {
     | "template5";
   instructions?: string;
   questionsPrompt?: string;
+  coverLetterPrompt?: string;
   hasOpenaiApiKey?: boolean;
   hasAnthropicApiKey?: boolean;
 }
@@ -47,6 +48,7 @@ export interface CreateUserDto {
     | "template5";
   instructions?: string;
   questionsPrompt?: string;
+  coverLetterPrompt?: string;
 }
 
 export interface UpdateUserDto {
@@ -62,6 +64,7 @@ export interface UpdateUserDto {
     | "template5";
   instructions?: string;
   questionsPrompt?: string;
+  coverLetterPrompt?: string;
 }
 
 export interface UpdateProfileDto {
@@ -69,6 +72,7 @@ export interface UpdateProfileDto {
   template?: string;
   instructions?: string;
   questionsPrompt?: string;
+  coverLetterPrompt?: string;
   openaiApiKey?: string;
   anthropicApiKey?: string;
   clearOpenaiApiKey?: boolean;

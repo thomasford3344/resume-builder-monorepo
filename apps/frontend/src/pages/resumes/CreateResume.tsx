@@ -25,6 +25,18 @@ import {
 } from "../../constants/aiModels";
 import { resizableMultilineSx } from "../../constants/textFieldStyles";
 
+const getResumePromptWarning = (
+  profile: UserResponse | null,
+): string | null => {
+  if (!profile) return null;
+
+  if (!profile.instructions?.trim()) {
+    return "No resume prompt configured. Add your resume prompt in Profile settings before generating a resume.";
+  }
+
+  return null;
+};
+
 const getApiKeyWarning = (
   profile: UserResponse | null,
   aiModel: AiProvider,
@@ -69,6 +81,14 @@ const CreateResume: React.FC = () => {
     [profile, aiModel],
   );
 
+  const resumePromptWarning = React.useMemo(
+    () => getResumePromptWarning(profile),
+    [profile],
+  );
+
+  const isGenerateDisabled =
+    isSubmitting || !!apiKeyWarning || !!resumePromptWarning;
+
   React.useEffect(() => {
     getProfile()
       .then(setProfile)
@@ -102,6 +122,12 @@ const CreateResume: React.FC = () => {
 
     if (apiKeyWarning) {
       setSubmitError(apiKeyWarning);
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (resumePromptWarning) {
+      setSubmitError(resumePromptWarning);
       setIsSubmitting(false);
       return;
     }
@@ -155,6 +181,20 @@ const CreateResume: React.FC = () => {
         be generated in the background using your profile prompt and selected AI
         model.
       </Typography>
+
+      {resumePromptWarning && (
+        <Alert
+          severity="warning"
+          sx={{ mb: 2 }}
+          action={
+            <Button color="inherit" size="small" component={Link} to="/profile">
+              Go to Profile
+            </Button>
+          }
+        >
+          {resumePromptWarning}
+        </Alert>
+      )}
 
       {apiKeyWarning && (
         <Alert
@@ -234,7 +274,7 @@ const CreateResume: React.FC = () => {
             type="submit"
             variant="contained"
             size="large"
-            disabled={isSubmitting || !!apiKeyWarning}
+            disabled={isGenerateDisabled}
             fullWidth
           >
             {isSubmitting ? "Generating Resume..." : "Generate Resume"}

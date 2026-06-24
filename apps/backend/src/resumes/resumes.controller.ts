@@ -333,6 +333,29 @@ export class ResumesController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Post(':id/generate-cover-letter')
+  async generateCoverLetter(
+    @Request() req,
+    @Param('id') id: string,
+    @Res() res: Response,
+  ) {
+    const { pdfBuffer, userName } =
+      await this.resumesService.generateCoverLetterForResume(id, req.user._id);
+
+    const sanitizedName = userName
+      .replace(/[^a-zA-Z0-9\s-]/g, '')
+      .trim()
+      .replace(/\s+/g, '_');
+
+    const filename = `${sanitizedName}_Cover_Letter.pdf`;
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Length', pdfBuffer.length);
+    res.send(pdfBuffer);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Get(':id/download-cover-letter')
   async downloadCoverLetter(
     @Request() req,

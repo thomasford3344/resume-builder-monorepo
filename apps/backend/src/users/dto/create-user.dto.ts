@@ -6,4 +6,5 @@ export class CreateUserDto {
   template?: 'template1';
   instructions?: string;
   questionsPrompt?: string;
+  coverLetterPrompt?: string;
 }

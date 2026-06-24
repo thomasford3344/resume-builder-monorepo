@@ -2806,6 +2806,21 @@ CANDIDATE_BACKGROUND:
   }
 
 
+  private stripDatesFromCoverLetterHeader(text: string): string {
+    const dateLinePatterns = [
+      /^\s*(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+\d{4}\s*$/gim,
+      /^\s*(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\.?\s+\d{1,2},?\s+\d{4}\s*$/gim,
+      /^\s*\d{1,2}\/\d{1,2}\/\d{2,4}\s*$/gim,
+    ];
+
+    let result = text;
+    for (const pattern of dateLinePatterns) {
+      result = result.replace(pattern, '');
+    }
+
+    return result.replace(/\n{3,}/g, '\n\n').trim();
+  }
+
   /**
    * Generate a cover letter PDF from text
    */
@@ -2832,52 +2847,68 @@ CANDIDATE_BACKGROUND:
         });
         doc.on('error', reject);
 
-        // Add cover letter text with proper formatting
-        doc
-          .fontSize(15)
-          .text(username, {
-            align: 'left',
-          });
+        const dearMatch = coverLetterText.match(/Dear\s+Hiring/i);
+        const dearIndex = dearMatch?.index ?? -1;
 
-        doc.moveDown(1);
+        let headerText = dearIndex >= 0
+          ? coverLetterText.slice(0, dearIndex).trim()
+          : '';
+        const contentText = dearIndex >= 0
+          ? coverLetterText.slice(dearIndex).trim()
+          : coverLetterText.trim();
 
-        const saluteText = coverLetterText.split("Dear Hiring")[0];
-        const contentText = coverLetterText.replace(saluteText, "");
+        headerText = this.stripDatesFromCoverLetterHeader(headerText);
+
+        const normalizedUsername = username.trim();
+        if (
+          normalizedUsername &&
+          headerText.toLowerCase().startsWith(normalizedUsername.toLowerCase())
+        ) {
+          headerText = headerText
+            .slice(normalizedUsername.length)
+            .replace(/^\s*\n+/, '')
+            .trim();
+        }
+
         const dateText = new Intl.DateTimeFormat('en-US', {
           month: 'short',
           day: 'numeric',
           year: 'numeric',
         }).format(new Date());
 
+        doc.fontSize(15).text(normalizedUsername, { align: 'left' });
+        doc.moveDown(0.35);
+
         doc.fontSize(11);
 
-        doc
-          .text(saluteText, {
-            align: 'justify',
-            lineGap: 3
+        if (headerText) {
+          doc.text(headerText, {
+            align: 'left',
+            lineGap: 1.5,
           });
+          doc.moveDown(0.35);
+        }
 
-        doc
-          .text(dateText, {
+        doc.text(dateText, {
+          align: 'left',
+          lineGap: 1.5,
+        });
+
+        doc.moveDown(0.75);
+
+        if (contentText.split('Sincerely')[0].endsWith('.\n')) {
+          const fixedContentText = contentText
+            .split('Sincerely')
+            .join('\nSincerely');
+          doc.text(fixedContentText, {
             align: 'justify',
-            lineGap: 3
+            lineGap: 1.5,
           });
-
-        doc.moveDown(1);
-
-        if (contentText.split("Sincerely")[0].endsWith(".\n")) {
-          const fixedContentText = contentText.split("Sincerely").join("\nSincerely");
-          doc
-            .text(fixedContentText, {
-              align: 'justify',
-              lineGap: 3
-            });          
         } else {
-          doc
-            .text(contentText, {
-              align: 'justify',
-              lineGap: 3
-            });
+          doc.text(contentText, {
+            align: 'justify',
+            lineGap: 1.5,
+          });
         }
 
         doc.end();
@@ -3057,6 +3088,97 @@ CANDIDATE_BACKGROUND:
     return this.resumeModel.findOne({ _id: id, userId }).exec();
   }
 
+  private normalizeCoverLetterText(coverLetter: unknown): string {
+    let coverLetterText: unknown = coverLetter;
+
+    try {
+      const parsed =
+        typeof coverLetterText === 'string'
+          ? JSON.parse(coverLetterText)
+          : coverLetterText;
+      if (typeof parsed === 'object' && parsed !== null) {
+        coverLetterText =
+          (parsed as { cover_letter?: string; coverLetter?: string })
+            .cover_letter ||
+          (parsed as { cover_letter?: string; coverLetter?: string })
+            .coverLetter ||
+          coverLetterText;
+      }
+    } catch {
+      // Not JSON, use as-is
+    }
+
+    const normalized =
+      typeof coverLetterText === 'string'
+        ? coverLetterText
+        : String(coverLetterText);
+
+    return normalized.replace(/\\n/g, '\n').trim();
+  }
+
+  async generateCoverLetterForResume(
+    id: string,
+    userId: string,
+  ): Promise<{ pdfBuffer: Buffer; userName: string }> {
+    const resume = await this.resumeModel.findOne({ _id: id, userId }).exec();
+
+    if (!resume) {
+      throw new NotFoundException(`Resume with id ${id} not found`);
+    }
+
+    const user = await this.userModel.findById(userId).exec();
+    if (!user) {
+      throw new NotFoundException(`User with ID ${userId} not found`);
+    }
+
+    if (!user.name?.trim()) {
+      throw new NotFoundException('User name not found');
+    }
+
+    const existingCoverLetter = resume.coverLetter
+      ? this.normalizeCoverLetterText(resume.coverLetter)
+      : '';
+
+    let formattedCoverLetter = existingCoverLetter;
+
+    if (!formattedCoverLetter) {
+      if (!resume.jobDescription?.trim()) {
+        throw new BadRequestException(
+          'Job description not found for this resume',
+        );
+      }
+
+      const resumeJson = await this.getResumeJson(id, userId);
+      const aiModel = (resume.aiModel as 'openai' | 'claude') || 'openai';
+
+      await this.validateApiKeyForGeneration(userId, aiModel);
+
+      const apiKeys = await this.usersService.getApiKeysForUser(userId);
+      const coverLetterText = await this.openAIService.generateCoverLetter(
+        resume.jobDescription,
+        resumeJson as unknown as Record<string, unknown>,
+        resume.conversationId,
+        aiModel,
+        resume.aiVersion || 'gpt-4.1-mini',
+        apiKeys,
+        user.coverLetterPrompt,
+      );
+
+      formattedCoverLetter = this.normalizeCoverLetterText(coverLetterText);
+      await this.updateCoverLetter(id, userId, formattedCoverLetter);
+    }
+
+    const pdfBuffer = await this.generateCoverLetterPDF(
+      user.name,
+      formattedCoverLetter,
+    );
+
+    return {
+      pdfBuffer,
+      userName: user.name,
+    };
+  }
+
   async downloadCoverLetterPDF(
     id: string,
     userId: string,
@@ -3086,25 +3208,7 @@ CANDIDATE_BACKGROUND:
       throw new NotFoundException('User name not found for this resume');
     }
 
-    let coverLetterText = resume.coverLetter;
-
-    // Parse if JSON
-    try {
-      const parsed = typeof coverLetterText === 'string' ? JSON.parse(coverLetterText) : coverLetterText;
-      if (typeof parsed === 'object' && parsed !== null) {
-        coverLetterText = parsed.cover_letter || parsed.coverLetter || coverLetterText;
-      }
-    } catch {
-      // Not JSON, use as-is
-    }
-
-    // Ensure it's a string
-    if (typeof coverLetterText !== 'string') {
-      coverLetterText = String(coverLetterText);
-    }
-
-    // Replace escaped newlines with actual newlines
-    coverLetterText = coverLetterText.replace(/\\n/g, '\n');
+    let coverLetterText = this.normalizeCoverLetterText(resume.coverLetter);
 
     // Generate PDF from the stored cover letter text
     const pdfBuffer = await this.generateCoverLetterPDF(user.name, coverLetterText);
