@@ -31,7 +31,7 @@ npm install
 2. Configure the backend environment in `apps/backend/.env`:
 
 ```env
-DATABASE_URL=mongodb://localhost:27017/resume-builder
+DATABASE_URL=mongodb://localhost:27017/resumes
 OPENAI_API_KEY=your_openai_key
 ANTHROPIC_API_KEY=your_anthropic_key
 PORT=3000

@@ -241,14 +241,12 @@ const Resumes: React.FC = () => {
     field: keyof FilterResumeParams,
     value: string,
   ) => {
-    setFilters((prev) => ({
-      ...prev,
+    const updatedFilters = {
+      ...filters,
       [field]: value,
-    }));
-  };
-
-  const handleApplyFilters = () => {
-    loadResumes(filters);
+    };
+    setFilters(updatedFilters);
+    loadResumes(updatedFilters);
   };
 
   const handleClearFilters = () => {
@@ -261,6 +259,23 @@ const Resumes: React.FC = () => {
     setFilters(emptyFilters);
     loadResumes(emptyFilters);
   };
+
+  const resumeCounts = React.useMemo(() => {
+    const completed = resumes.filter((r) => r.status === "completed").length;
+    const inProgress = resumes.filter((r) => r.status === "in_progress").length;
+    const failed = resumes.filter((r) => r.status === "failed").length;
+    const gpt = resumes.filter((r) => r.aiModel !== "claude").length;
+    const claude = resumes.filter((r) => r.aiModel === "claude").length;
+
+    return {
+      total: resumes.length,
+      completed,
+      inProgress,
+      failed,
+      gpt,
+      claude,
+    };
+  }, [resumes]);
 
   const handleDownloadResume = async (id: string) => {
     try {
@@ -515,8 +530,8 @@ const Resumes: React.FC = () => {
           <Typography variant="h6" gutterBottom>
             Filter Resumes
           </Typography>
-          <Grid container spacing={2}>
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <Grid container spacing={2} alignItems="flex-end">
+            <Grid size={{ xs: 12, sm: 6, md: "grow" }}>
               <TextField
                 label="Company Name"
                 value={filters.companyName || ""}
@@ -527,7 +542,7 @@ const Resumes: React.FC = () => {
                 size="small"
               />
             </Grid>
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <Grid size={{ xs: 12, sm: 6, md: "grow" }}>
               <TextField
                 label="Role Type"
                 value={filters.roleType || ""}
@@ -536,7 +551,7 @@ const Resumes: React.FC = () => {
                 size="small"
               />
             </Grid>
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <Grid size={{ xs: 12, sm: 6, md: "grow" }}>
               <TextField
                 label="Start Date"
                 type="date"
@@ -549,7 +564,7 @@ const Resumes: React.FC = () => {
                 InputLabelProps={{ shrink: true }}
               />
             </Grid>
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <Grid size={{ xs: 12, sm: 6, md: "grow" }}>
               <TextField
                 label="End Date"
                 type="date"
@@ -560,19 +575,61 @@ const Resumes: React.FC = () => {
                 InputLabelProps={{ shrink: true }}
               />
             </Grid>
+            <Grid size={{ xs: 12, sm: "auto" }}>
+              <Button
+                variant="outlined"
+                startIcon={<ClearIcon />}
+                onClick={handleClearFilters}
+                color="secondary"
+                size="small"
+                sx={{ height: 40 }}
+              >
+                Clear
+              </Button>
+            </Grid>
           </Grid>
-          <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
-            <Button variant="contained" onClick={handleApplyFilters}>
-              Apply Filters
-            </Button>
-            <Button
-              variant="outlined"
-              startIcon={<ClearIcon />}
-              onClick={handleClearFilters}
-              color="secondary"
-            >
-              Clear
-            </Button>
+          <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 2 }}>
+            <Typography variant="body2" color="text.secondary">
+              {loading
+                ? "Loading resumes..."
+                : `${resumeCounts.total} generated resume${resumeCounts.total !== 1 ? "s" : ""}`}
+            </Typography>
+            {!loading && resumeCounts.total > 0 && (
+              <>
+                <Chip
+                  label={`${resumeCounts.completed} completed`}
+                  size="small"
+                  color="success"
+                  variant="outlined"
+                />
+                {resumeCounts.inProgress > 0 && (
+                  <Chip
+                    label={`${resumeCounts.inProgress} in progress`}
+                    size="small"
+                    color="info"
+                    variant="outlined"
+                  />
+                )}
+                {resumeCounts.failed > 0 && (
+                  <Chip
+                    label={`${resumeCounts.failed} failed`}
+                    size="small"
+                    color="error"
+                    variant="outlined"
+                  />
+                )}
+                <Chip
+                  label={`${resumeCounts.gpt} GPT`}
+                  size="small"
+                  variant="outlined"
+                />
+                <Chip
+                  label={`${resumeCounts.claude} Claude`}
+                  size="small"
+                  variant="outlined"
+                />
+              </>
+            )}
           </Stack>
         </Paper>
 
