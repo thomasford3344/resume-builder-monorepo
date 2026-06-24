@@ -50,18 +50,13 @@ export const RESUME_JSON_SCHEMA = {
               'Data',
               'Tools',
               'Industry',
-              'Mobile',
-              'AI',
-              'DevOps',
-              'Security',
-              'Data Engineering',
-              'Platform',
+              'Mobile'
             ],
           },
           items: {
             type: 'array',
             items: { type: 'string' },
-            minItems: 6,
+            minItems: 8,
           },
         },
         required: ['category', 'items'],
@@ -95,21 +90,21 @@ export const RESUME_JSON_SCHEMA = {
             items: {
               type: 'string',
             },
-            minItems: 5,
+            minItems: 3,
           },
           achievements: {
             type: 'array',
             items: {
               type: 'string',
             },
-            minItems: 4,
+            minItems: 5,
           },
           skills: {
             type: 'array',
             items: {
               type: 'string',
             },
-            minItems: 3,
+            minItems: 8,
           },
         },
         required: [
@@ -152,10 +147,6 @@ export const RESUME_JSON_SCHEMA = {
       },
       minItems: 1,
     },
-    cover_letter: {
-      type: 'string',
-      minLength: 1,
-    },
   },
   required: [
     'name',
@@ -164,8 +155,7 @@ export const RESUME_JSON_SCHEMA = {
     'summary',
     'skills',
     'experience',
-    'education',
-    'cover_letter',
+    'education'
   ],
   additionalProperties: false,
 };
