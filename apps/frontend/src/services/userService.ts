@@ -1,5 +1,5 @@
-// src/services/userService.ts
 import ApiClient from "./apiClient";
+import type { ResumeSettings } from "../constants/resumeSettings";
 
 export type User = {
   id: number;
@@ -33,6 +33,7 @@ export interface UserResponse {
   coverLetterPrompt?: string;
   defaultAiModel?: "openai" | "claude";
   defaultAiVersion?: string;
+  resumeSettings?: ResumeSettings;
   hasOpenaiApiKey?: boolean;
   hasAnthropicApiKey?: boolean;
 }
@@ -77,6 +78,7 @@ export interface UpdateProfileDto {
   coverLetterPrompt?: string;
   defaultAiModel?: "openai" | "claude";
   defaultAiVersion?: string;
+  resumeSettings?: Partial<ResumeSettings>;
   openaiApiKey?: string;
   anthropicApiKey?: string;
   clearOpenaiApiKey?: boolean;
@@ -166,11 +168,4 @@ export const revealApiKeys = async (currentPassword: string) => {
     { currentPassword },
   );
   return res.data;
-};
-
-export const previewTemplate = async (template: string) => {
-  const res = await api.get(`/api/users/templates/${template}/preview`, {
-    responseType: "blob",
-  });
-  return res.data as Blob;
 };

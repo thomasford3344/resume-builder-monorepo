@@ -2,7 +2,7 @@ import * as PDFKit from 'pdfkit';
 import sharp from 'sharp';
 import { existsSync } from 'fs';
 import { join } from 'path';
-import { ResumeData } from '.';
+import { ResumeData, DEFAULT_RESUME_PDF_SETTINGS, filterSkillsForPdf, type ResumePdfSettings } from '.';
 
 export class ResumePDFTemplate2 {
   private data: ResumeData;
@@ -22,9 +22,15 @@ export class ResumePDFTemplate2 {
   private fontBoldItalicPath: string | null = null;
   private headerImagePath: string | null = null;
   private headerImageAspectRatio: number | null = null;
+  private pdfSettings: ResumePdfSettings;
 
-  constructor(data: ResumeData, headerImagePath?: string) {
+  constructor(
+    data: ResumeData,
+    pdfSettings: ResumePdfSettings = DEFAULT_RESUME_PDF_SETTINGS,
+    headerImagePath?: string,
+  ) {
     this.data = this._normalizeData(data);
+    this.pdfSettings = pdfSettings;
     this.contentWidth = this.pageWidth - 2 * this.marginX;
     this._findFonts();
 
@@ -154,7 +160,6 @@ export class ResumePDFTemplate2 {
 
   private _addName(doc: any) {
     const name = this.data.name || '';
-    const title = this.data.title || '';
 
     doc
       .font(this.fontBold)
@@ -166,6 +171,10 @@ export class ResumePDFTemplate2 {
       });
 
     doc.moveDown(0.5);
+  }
+
+  private _addTitle(doc: any) {
+    const title = this.data.title || '';
 
     if (title) {
       doc.font(this.fontName).fontSize(16).fillColor('#4A4A4A').text(title, {
@@ -378,8 +387,15 @@ export class ResumePDFTemplate2 {
   }
 
   private _addSkills(doc: any) {
+    const skills = filterSkillsForPdf(
+      this.data.skills || [],
+      this.pdfSettings.skillCategories,
+    );
+    if (skills.length === 0) {
+      return;
+    }
+
     this._addSectionHeader(doc, 'SKILLS');
-    const skills = this.data.skills;
 
     doc.font(this.fontName).fontSize(11).fillColor('#333333');
 
@@ -417,6 +433,151 @@ export class ResumePDFTemplate2 {
     }
 
     doc.moveDown(1);
+  }
+
+  private _addSubTitle(
+    doc: any,
+    subtitle: string,
+    items: string[],
+    options: {
+      bulletX?: number;
+      textWidth?: number;
+      heightEstimateWidth?: number;
+      extraHeightEstimateItems?: string[];
+      leadingItems?: string[];
+      contentColor?: string;
+      lineGap?: number;
+      renderItems?: (
+        doc: any,
+        renderBullet: (item: string) => void,
+      ) => void;
+    } = {},
+  ) {
+    const leadingItems = options.leadingItems || [];
+    if (items.length === 0 && leadingItems.length === 0) {
+      return;
+    }
+
+    const titleFontSize = 11;
+    const contentFontSize = 11;
+    const titleHeight = titleFontSize * 1.2;
+    const titleSpacing = titleFontSize * 0.3;
+    const contentSpacing = contentFontSize * 0.3;
+    const paragraphGap = 2;
+    const bulletX = options.bulletX ?? this.marginX + 18;
+    const textWidth = options.textWidth ?? this.contentWidth - 18;
+    const heightEstimateWidth =
+      options.heightEstimateWidth ?? textWidth;
+    const contentColor = options.contentColor ?? '#333333';
+
+    let totalContentHeight = 0;
+    doc.font(this.fontName).fontSize(contentFontSize);
+
+    const estimateItem = (item: string) => {
+      const itemText = String(item).replace(/\n/g, ' ');
+      const bulletText = `• ${itemText}`;
+      return (
+        this._estimateTextHeight(
+          doc,
+          bulletText,
+          heightEstimateWidth,
+          contentFontSize,
+        ) + paragraphGap
+      );
+    };
+
+    for (const item of options.extraHeightEstimateItems || []) {
+      totalContentHeight += estimateItem(item);
+    }
+    for (const item of [...leadingItems, ...items]) {
+      totalContentHeight += estimateItem(item);
+    }
+
+    const titleBlockHeight = this.pdfSettings.showSubTitle
+      ? titleHeight + titleSpacing
+      : 0;
+    const totalSpaceNeeded =
+      titleBlockHeight + totalContentHeight + contentSpacing;
+
+    const currentY = doc.y;
+    const spaceAvailable = this.pageHeight - this.marginB - currentY;
+    const minSpaceRequired = this.pdfSettings.showSubTitle
+      ? titleHeight + titleSpacing + contentFontSize * 1.2
+      : contentFontSize * 1.2;
+
+    if (spaceAvailable < minSpaceRequired) {
+      doc.addPage();
+    } else if (spaceAvailable < totalSpaceNeeded) {
+      if (spaceAvailable < minSpaceRequired * 2) {
+        doc.addPage();
+      }
+    }
+
+    if (this.pdfSettings.showSubTitle) {
+      doc
+        .font(this.fontBold)
+        .fontSize(titleFontSize)
+        .fillColor('#2C3E50')
+        .text(subtitle, this.marginX + 18, doc.y, {
+          width: this.contentWidth,
+          align: 'left',
+        });
+      doc.moveDown(0.3);
+    }
+
+    doc.font(this.fontName).fontSize(contentFontSize).fillColor(contentColor);
+
+    const renderBullet = (item: string) => {
+      const itemText = String(item).replace(/\n/g, ' ');
+      const bulletText = `• ${itemText}`;
+      const textOptions: {
+        width: number;
+        align: 'left';
+        paragraphGap: number;
+        lineGap?: number;
+      } = {
+        width: textWidth,
+        align: 'left',
+        paragraphGap: 2,
+      };
+      if (options.lineGap !== undefined) {
+        textOptions.lineGap = options.lineGap;
+      }
+      doc.text(bulletText, bulletX, doc.y, textOptions);
+    };
+
+    if (options.renderItems) {
+      options.renderItems(doc, renderBullet);
+    } else {
+      for (const item of leadingItems) {
+        renderBullet(item);
+      }
+      for (const item of items) {
+        renderBullet(item);
+      }
+    }
+  }
+
+  private _addCompanySkills(
+    doc: any,
+    skillsInCompany: string | string[] | undefined,
+  ) {
+    if (!skillsInCompany) {
+      return;
+    }
+
+    const skillsText = Array.isArray(skillsInCompany)
+      ? skillsInCompany.join(', ')
+      : String(skillsInCompany);
+    const bulletX = this.marginX + 18;
+    doc.font(this.fontBoldItalic).fontSize(11).fillColor('#2C3E50');
+    doc.text('Skills: ', bulletX, doc.y, {
+      width: this.contentWidth - 18,
+      align: 'left',
+      continued: true,
+    });
+    doc.font(this.fontItalic).fillColor('#333333').text(skillsText);
+    doc.moveDown(0.3);
   }
 
   private _addExperience(doc: any) {
@@ -514,167 +675,20 @@ export class ResumePDFTemplate2 {
 
       const responsibilities = exp.responsibilities || [];
       if (responsibilities.length > 0) {
-        // Calculate space needed for "Key Qualifications & Responsibilities" section
-        const titleFontSize = 11;
-        const contentFontSize = 11;
-        const titleHeight = titleFontSize * 1.2; // Title line height
-        const titleSpacing = titleFontSize * 0.3; // moveDown(0.3) spacing
-        const contentSpacing = contentFontSize * 0.3; // Final moveDown(0.3) spacing
-        const paragraphGap = 2;
-
-        // Estimate height for all responsibility items
-        let totalContentHeight = 0;
-        doc.font(this.fontName).fontSize(contentFontSize);
-        for (const responsibility of responsibilities) {
-          const respText = String(responsibility).replace(/\n/g, ' ');
-          const bulletText = `• ${respText}`;
-          const itemHeight = this._estimateTextHeight(
-            doc,
-            bulletText,
-            this.contentWidth - 18,
-            contentFontSize,
-          );
-          totalContentHeight += itemHeight + paragraphGap;
-        }
-
-        // Total space needed: title + title spacing + content + content spacing
-        const totalSpaceNeeded =
-          titleHeight + titleSpacing + totalContentHeight + contentSpacing;
-
-        // Check if we need a page break
-        const currentY = doc.y;
-        const spaceAvailable = this.pageHeight - this.marginB - currentY;
-        const minSpaceRequired =
-          titleHeight + titleSpacing + contentFontSize * 1.2; // At least title + one line
-
-        if (spaceAvailable < minSpaceRequired) {
-          // Not enough space even for title + one line, add page break
-          doc.addPage();
-        } else if (spaceAvailable < totalSpaceNeeded) {
-          // We have space for title but not all content
-          // Check if we can fit at least the title + a few lines
-          if (spaceAvailable < minSpaceRequired * 2) {
-            // Not enough space for title + reasonable content, add page break
-            doc.addPage();
-          }
-        }
-
-        doc
-          .font(this.fontBold)
-          .fontSize(titleFontSize)
-          .fillColor('#2C3E50')
-          .text(
-            'Key Qualifications & Responsibilities',
-            this.marginX + 18,
-            doc.y,
-            {
-              width: this.contentWidth,
-              align: 'left',
-            },
-          );
-        doc.moveDown(0.3);
-
-        doc.font(this.fontName).fontSize(contentFontSize).fillColor('#333333');
-
-        for (const responsibility of responsibilities) {
-          const respText = String(responsibility).replace(/\n/g, ' ');
-          const bulletX = this.marginX + 18;
-          const bulletText = `• ${respText}`;
-          doc.text(bulletText, bulletX, doc.y, {
-            width: this.contentWidth - 18,
-            align: 'left',
-            paragraphGap: 2,
-          });
-        }
-        doc.moveDown(0.3);
+        this._addSubTitle(
+          doc,
+          'Key Qualifications & Responsibilities',
+          responsibilities,
+        );
       }
 
       const achievements = exp.achievements || [];
       if (achievements.length > 0) {
-        // Calculate space needed for "Key Achievements" section
-        const titleFontSize = 11;
-        const contentFontSize = 11;
-        const titleHeight = titleFontSize * 1.2; // Title line height
-        const titleSpacing = titleFontSize * 0.3; // moveDown(0.3) spacing
-        const contentSpacing = contentFontSize * 0.3; // Final moveDown(0.3) spacing
-        const paragraphGap = 2;
-
-        // Estimate height for all achievement items
-        let totalContentHeight = 0;
-        doc.font(this.fontName).fontSize(contentFontSize);
-        for (const achievement of achievements) {
-          const achText = String(achievement).replace(/\n/g, ' ');
-          const bulletText = `• ${achText}`;
-          const itemHeight = this._estimateTextHeight(
-            doc,
-            bulletText,
-            this.contentWidth - 18,
-            contentFontSize,
-          );
-          totalContentHeight += itemHeight + paragraphGap;
-        }
-
-        // Total space needed: title + title spacing + content + content spacing
-        const totalSpaceNeeded =
-          titleHeight + titleSpacing + totalContentHeight + contentSpacing;
-
-        // Check if we need a page break
-        const currentY = doc.y;
-        const spaceAvailable = this.pageHeight - this.marginB - currentY;
-        const minSpaceRequired =
-          titleHeight + titleSpacing + contentFontSize * 1.2; // At least title + one line
-
-        if (spaceAvailable < minSpaceRequired) {
-          // Not enough space even for title + one line, add page break
-          doc.addPage();
-        } else if (spaceAvailable < totalSpaceNeeded) {
-          // We have space for title but not all content
-          // Check if we can fit at least the title + a few lines
-          if (spaceAvailable < minSpaceRequired * 2) {
-            // Not enough space for title + reasonable content, add page break
-            doc.addPage();
-          }
-        }
-
-        doc
-          .font(this.fontBold)
-          .fontSize(titleFontSize)
-          .fillColor('#2C3E50')
-          .text('Key Achievements', this.marginX + 18, doc.y, {
-            width: this.contentWidth,
-            align: 'left',
-          });
-        doc.moveDown(0.3);
-
-        doc.font(this.fontName).fontSize(contentFontSize).fillColor('#333333');
-
-        for (const achievement of achievements) {
-          const achText = String(achievement).replace(/\n/g, ' ');
-          const bulletX = this.marginX + 18;
-          const bulletText = `• ${achText}`;
-          doc.text(bulletText, bulletX, doc.y, {
-            width: this.contentWidth - 18,
-            align: 'left',
-            paragraphGap: 2,
-          });
-        }
-        doc.moveDown(0.3);
+        this._addSubTitle(doc, 'Key Achievements', achievements);
       }
 
-      const skillsInCompany = exp.skills;
-      if (skillsInCompany) {
-        const skillsText = Array.isArray(skillsInCompany)
-          ? skillsInCompany.join(', ')
-          : String(skillsInCompany);
-        const bulletX = this.marginX + 18;
-        doc.font(this.fontBoldItalic).fontSize(11).fillColor('#2C3E50');
-        doc.text('Skills: ', bulletX, doc.y, {
-          width: this.contentWidth - 18,
-          align: 'left',
-          continued: true,
-        });
-        doc.font(this.fontItalic).fillColor('#333333').text(skillsText);
-        doc.moveDown(0.3);
+      if (this.pdfSettings.showCompanySkills) {
+        this._addCompanySkills(doc, exp.skills);
       }
 
       doc.moveDown(0.3);
@@ -840,6 +854,9 @@ export class ResumePDFTemplate2 {
 
         await this._drawHeaderImage(doc);
         this._addName(doc);
+        if (this.pdfSettings.showTitle) {
+          this._addTitle(doc);
+        }
         this._addContact(doc);
         this._addSummary(doc);
         this._addSkills(doc);

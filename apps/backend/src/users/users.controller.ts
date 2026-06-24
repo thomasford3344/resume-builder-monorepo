@@ -8,10 +8,7 @@ import {
   Param,
   Request,
   UseGuards,
-  Res,
 } from '@nestjs/common';
-import type { Response } from 'express';
-
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 import { AdminGuard } from 'src/auth/admin.guard';
 import { UsersService } from './users.service';
@@ -39,23 +36,6 @@ export class UsersController {
   @Post('profile/reveal-api-keys')
   async revealApiKeys(@Request() req, @Body() body: RevealApiKeysDto) {
     return this.usersService.revealApiKeys(req.user._id, body.currentPassword);
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Get('templates/:template/preview')
-  async previewTemplate(
-    @Param('template') template: string,
-    @Res() res: Response,
-  ) {
-    const pdfBuffer = this.usersService.getTemplatePreviewPdf(template);
-
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader(
-      'Content-Disposition',
-      `inline; filename="${template}.pdf"`,
-    );
-    res.setHeader('Content-Length', pdfBuffer.length);
-    res.send(pdfBuffer);
   }
 
   @UseGuards(JwtAuthGuard, AdminGuard)

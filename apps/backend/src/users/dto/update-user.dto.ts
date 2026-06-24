@@ -1,3 +1,5 @@
+import type { ResumeSettings } from '../../ai/resume-settings';
+
 export class UpdateUserDto {
   email?: string;
   name?: string;
@@ -15,4 +17,5 @@ export class UpdateUserDto {
   clearAnthropicApiKey?: boolean;
   currentPassword?: string;
   newPassword?: string;
+  resumeSettings?: Partial<ResumeSettings>;
 }
