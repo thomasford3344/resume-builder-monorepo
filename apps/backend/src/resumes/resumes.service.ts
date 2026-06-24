@@ -2,9 +2,6 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { InjectModel } from '@nestjs/mongoose';
 import { ResumesGateway } from './resumes.gateway';
 import { Model } from 'mongoose';
-import { join } from 'path';
-import { existsSync } from 'fs';
-import { writeFile, mkdir, unlink, readFile } from 'fs/promises';
 import * as PDFKit from 'pdfkit';
 
 import { Resume } from './schemas/resume.schema';
@@ -22,23 +19,33 @@ import { UsersService } from '../users/users.service';
 
 @Injectable()
 export class ResumesService {
-  private readonly uploadsDir = join(process.cwd(), 'uploads', 'resumes');
-
   constructor(
     @InjectModel(Resume.name) private resumeModel: Model<Resume>,
     @InjectModel(User.name) private userModel: Model<User>,
     private openAIService: OpenAIService,
     private usersService: UsersService,
     private readonly gateway: ResumesGateway
-  ) {
-    // Ensure uploads directory exists
-    this.ensureUploadsDir();
+  ) {}
+
+  private getStoredResumeJson(resume: Resume): ResumeData {
+    if (!resume.resumeJson || typeof resume.resumeJson !== 'object') {
+      throw new NotFoundException('Resume JSON not found');
+    }
+
+    return resume.resumeJson as unknown as ResumeData;
   }
 
-  private async ensureUploadsDir() {
-    if (!existsSync(this.uploadsDir)) {
-      await mkdir(this.uploadsDir, { recursive: true });
+  async getResumeJson(
+    id: string,
+    userId: string,
+  ): Promise<ResumeData> {
+    const resume = await this.resumeModel.findOne({ _id: id, userId }).exec();
+
+    if (!resume) {
+      throw new NotFoundException(`Resume with id ${id} not found`);
     }
+
+    return this.getStoredResumeJson(resume);
   }
 
   async validateApiKeyForGeneration(
@@ -83,25 +90,14 @@ export class ResumesService {
     aiModel?: string,
     aiVersion?: string,
   ) {
-    // Generate unique filename
-    const timestamp = Date.now();
-    const jsonFilename = `${timestamp}-${userId}.json`;
-    const jsonFilePath = join(this.uploadsDir, jsonFilename);
-
-    // Convert JSON object to string and save file to server
-    const jsonContent = JSON.stringify(json, null, 2);
-    await writeFile(jsonFilePath, jsonContent, 'utf-8');
-
-    // Generate PDF using template based on user's template setting
     const pdfBuffer = await this.generatePDF(json, userTemplate || 'template1');
 
-    // Save to database
     const resume = new this.resumeModel({
       userId,
       companyName,
       roleType,
       jobDescription,
-      jsonFilePath: jsonFilePath,
+      resumeJson: json,
       conversationId: conversationId,
       status: status,
       aiModel,
@@ -150,16 +146,6 @@ export class ResumesService {
     conversationId?: string,
     coverLetter?: string,
   ) {
-    // Generate unique filename
-    const timestamp = Date.now();
-    const jsonFilename = `${timestamp}-${userId}.json`;
-    const jsonFilePath = join(this.uploadsDir, jsonFilename);
-
-    // Convert JSON object to string and save file to server
-    const jsonContent = JSON.stringify(json, null, 2);
-    await writeFile(jsonFilePath, jsonContent, 'utf-8');
-
-    // Generate PDF using template based on user's template setting
     const pdfBuffer = await this.generatePDF(json, userTemplate || 'template1');
 
     // Prepare cover letter if provided
@@ -177,7 +163,7 @@ export class ResumesService {
 
     // Update the resume record
     const updateData: any = {
-      jsonFilePath: jsonFilePath,
+      resumeJson: json,
       conversationId: conversationId,
       status: 'completed',
     };
@@ -3133,12 +3119,7 @@ CANDIDATE_BACKGROUND:
 
     if (!resume) throw new NotFoundException(`Resume with id ${id} not found`);
 
-    // Read JSON file from disk
-    if (!resume.jsonFilePath || !existsSync(resume.jsonFilePath))
-      throw new NotFoundException('Resume JSON file not found');
-
-    const jsonContent = await readFile(resume.jsonFilePath, 'utf-8');
-    const jsonData = JSON.parse(jsonContent);
+    const jsonData = this.getStoredResumeJson(resume);
 
     // Generate PDF from the JSON data using user's template
     const pdfBuffer = await this.generatePDF(
@@ -3154,13 +3135,9 @@ CANDIDATE_BACKGROUND:
 
     if (!resume) throw new NotFoundException(`Resume with id ${id} not found`);
 
-    // Read JSON file from disk
-    if (!resume.jsonFilePath || !existsSync(resume.jsonFilePath))
-      throw new NotFoundException('Resume JSON file not found');
+    const jsonData = this.getStoredResumeJson(resume);
 
-    const jsonContent = await readFile(resume.jsonFilePath, 'utf-8');
-
-    return jsonContent;
+    return JSON.stringify(jsonData, null, 2);
   }
 
   async delete(id: string, userId: string): Promise<void> {
@@ -3170,17 +3147,6 @@ CANDIDATE_BACKGROUND:
       throw new NotFoundException(`Resume with id ${id} not found`);
     }
 
-    // Delete file from disk
-    if (resume.jsonFilePath && existsSync(resume.jsonFilePath)) {
-      try {
-        await unlink(resume.jsonFilePath);
-      } catch (error) {
-        // Log error but continue with database deletion
-        console.error(`Failed to delete file ${resume.jsonFilePath}:`, error);
-      }
-    }
-
-    // Delete from database
     await this.resumeModel.findByIdAndDelete(id).exec();
   }
 
@@ -3191,26 +3157,12 @@ CANDIDATE_BACKGROUND:
     const failed: string[] = [];
     let deleted = 0;
 
-    // Get all resumes that belong to the user
     const resumes = await this.resumeModel
       .find({ _id: { $in: ids }, userId })
       .exec();
 
     for (const resume of resumes) {
       try {
-        // Delete file from disk
-        if (resume.jsonFilePath && existsSync(resume.jsonFilePath)) {
-          try {
-            await unlink(resume.jsonFilePath);
-          } catch (error) {
-            console.error(
-              `Failed to delete file ${resume.jsonFilePath}:`,
-              error,
-            );
-          }
-        }
-
-        // Delete from database
         await this.resumeModel.findByIdAndDelete(resume._id).exec();
         deleted++;
       } catch (error) {
