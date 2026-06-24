@@ -38,8 +38,6 @@ import {
   answerQuestionsSchema,
 } from './dto/answer-questions.dto';
 import { type FromJsonDto, fromJsonSchema } from './dto/from-json.dto';
-import { readFile } from 'fs/promises';
-import { existsSync } from 'fs';
 
 @Controller('resumes')
 export class ResumesController {
@@ -98,6 +96,11 @@ export class ResumesController {
     res.setHeader('X-Accel-Buffering', 'no'); // Disable nginx buffering
 
     try {
+      await this.resumesService.validateApiKeyForGeneration(
+        req.user._id,
+        generateResumeDto.aiModel,
+      );
+
       // Create resume record with in_progress status first
       const resumeRecord = await this.resumesService.createInProgress(
         req.user._id,
@@ -129,14 +132,31 @@ export class ResumesController {
           generateResumeDto.industry,
         )
         .catch((error) => {
-          // Log error but don't throw since response is already sent
-          console.error('Error generating resume in background:', error);
+          const message =
+            error?.message || 'Failed to generate resume in background';
+          console.error('Error generating resume in background:', message);
+          void this.resumesService.markResumeFailed(
+            resumeRecord._id.toString(),
+            req.user._id,
+          );
         });
     } catch (error) {
+      const response =
+        typeof error?.getResponse === 'function'
+          ? error.getResponse()
+          : undefined;
+      const rawMessage =
+        (typeof response === 'object' && response !== null && 'message' in response
+          ? (response as { message?: string | string[] }).message
+          : undefined) || error?.message;
+      const message = Array.isArray(rawMessage)
+        ? rawMessage.join(', ')
+        : rawMessage || 'Failed to generate resume';
+
       res.write(
         `data: ${JSON.stringify({
           type: 'error',
-          message: error.message || 'Failed to generate resume',
+          message,
         })}\n\n`,
       );
       res.end();
@@ -172,6 +192,7 @@ export class ResumesController {
       'completed',
       fromJsonDto.aiModel,
       fromJsonDto.aiVersion,
+      'manual',
     );
     const sanitizedName = userName
       .replace(/[^a-zA-Z0-9\s-]/g, '')
@@ -208,12 +229,10 @@ export class ResumesController {
       throw new NotFoundException('Job description not found for this resume');
     }
 
-    if (!resume.jsonFilePath || !existsSync(resume.jsonFilePath)) {
-      throw new NotFoundException('Resume JSON file not found');
-    }
-
-    const jsonContent = await readFile(resume.jsonFilePath, 'utf-8');
-    const resumeJson = JSON.parse(jsonContent);
+    const resumeJson = await this.resumesService.getResumeJson(
+      answerQuestionsDto.resumeId,
+      req.user._id,
+    );
 
     // Parse questions from text and answer them in a single AI call
     const qaPairs = await this.resumesService.parseAndAnswerQuestions(
@@ -311,6 +330,29 @@ export class ResumesController {
 
     // Send JSON content
     res.send(jsonContent);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/generate-cover-letter')
+  async generateCoverLetter(
+    @Request() req,
+    @Param('id') id: string,
+    @Res() res: Response,
+  ) {
+    const { pdfBuffer, userName } =
+      await this.resumesService.generateCoverLetterForResume(id, req.user._id);
+
+    const sanitizedName = userName
+      .replace(/[^a-zA-Z0-9\s-]/g, '')
+      .trim()
+      .replace(/\s+/g, '_');
+
+    const filename = `${sanitizedName}_Cover_Letter.pdf`;
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Length', pdfBuffer.length);
+    res.send(pdfBuffer);
   }
 
   @UseGuards(JwtAuthGuard)

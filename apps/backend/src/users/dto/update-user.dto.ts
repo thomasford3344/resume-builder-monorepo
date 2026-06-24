@@ -6,4 +6,13 @@ export class UpdateUserDto {
   template?: 'template1';
   instructions?: string;
   questionsPrompt?: string;
+  coverLetterPrompt?: string;
+  defaultAiModel?: 'openai' | 'claude';
+  defaultAiVersion?: string;
+  openaiApiKey?: string;
+  anthropicApiKey?: string;
+  clearOpenaiApiKey?: boolean;
+  clearAnthropicApiKey?: boolean;
+  currentPassword?: string;
+  newPassword?: string;
 }

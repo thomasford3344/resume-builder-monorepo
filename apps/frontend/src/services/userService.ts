@@ -30,6 +30,11 @@ export interface UserResponse {
     | "template5";
   instructions?: string;
   questionsPrompt?: string;
+  coverLetterPrompt?: string;
+  defaultAiModel?: "openai" | "claude";
+  defaultAiVersion?: string;
+  hasOpenaiApiKey?: boolean;
+  hasAnthropicApiKey?: boolean;
 }
 
 export interface CreateUserDto {
@@ -45,6 +50,7 @@ export interface CreateUserDto {
     | "template5";
   instructions?: string;
   questionsPrompt?: string;
+  coverLetterPrompt?: string;
 }
 
 export interface UpdateUserDto {
@@ -60,6 +66,7 @@ export interface UpdateUserDto {
     | "template5";
   instructions?: string;
   questionsPrompt?: string;
+  coverLetterPrompt?: string;
 }
 
 export interface UpdateProfileDto {
@@ -67,8 +74,20 @@ export interface UpdateProfileDto {
   template?: string;
   instructions?: string;
   questionsPrompt?: string;
+  coverLetterPrompt?: string;
+  defaultAiModel?: "openai" | "claude";
+  defaultAiVersion?: string;
+  openaiApiKey?: string;
+  anthropicApiKey?: string;
+  clearOpenaiApiKey?: boolean;
+  clearAnthropicApiKey?: boolean;
   currentPassword?: string;
   newPassword?: string;
+}
+
+export interface RevealedApiKeysResponse {
+  openaiApiKey: string | null;
+  anthropicApiKey: string | null;
 }
 
 export interface RegisterDto {
@@ -139,4 +158,19 @@ export const getProfile = async () => {
 export const updateProfile = async (data: UpdateProfileDto) => {
   const res = await api.put<UserResponse>("/api/users/profile", data);
   return res.data;
+};
+
+export const revealApiKeys = async (currentPassword: string) => {
+  const res = await api.post<RevealedApiKeysResponse>(
+    "/api/users/profile/reveal-api-keys",
+    { currentPassword },
+  );
+  return res.data;
+};
+
+export const previewTemplate = async (template: string) => {
+  const res = await api.get(`/api/users/templates/${template}/preview`, {
+    responseType: "blob",
+  });
+  return res.data as Blob;
 };

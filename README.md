@@ -31,11 +31,12 @@ npm install
 2. Configure the backend environment in `apps/backend/.env`:
 
 ```env
-DATABASE_URL=mongodb://localhost:27017/resume-builder
-OPENAI_API_KEY=your_openai_key
-ANTHROPIC_API_KEY=your_anthropic_key
+DATABASE_URL=mongodb://localhost:27017/resumes
+ENCRYPTION_KEY=your_32_byte_hex_encryption_key
 PORT=3000
 ```
+
+Each user adds their own OpenAI and Anthropic API keys in **Profile** settings. Keys are encrypted at rest in the database.
 
 3. (Optional) Configure the frontend in `apps/frontend/.env`:
 
@@ -76,6 +77,66 @@ npm run dev -w resume-builder-frontend
 ```bash
 npm run build
 ```
+
+## Adding a new AI model version
+
+Model options are defined in two places. Keep the `value` strings in sync between frontend and backend.
+
+### 1. Frontend (dropdown labels)
+
+Edit `apps/frontend/src/constants/aiModels.ts`:
+
+- Add an entry to `OPENAI_MODELS` or `CLAUDE_MODELS`:
+  - `label` — display name in the model selector and resume list
+  - `value` — stored as `aiVersion` and sent to the API
+- Optionally update defaults in the same file:
+  - `DEFAULT_OPENAI_VERSION` / `DEFAULT_CLAUDE_VERSION` — pre-selected model on Generate Resume
+  - `DEFAULT_FROM_JSON_AI_VERSION` — pre-selected model on From JSON
+  - `DEFAULT_AI_PROVIDER` — default provider toggle
+
+`AiModelSelector` reads these arrays automatically; no component changes are required.
+
+### 2. Backend (API model ID mapping)
+
+Edit `apps/backend/src/ai/ai-models.ts`:
+
+- Add the same `value` key to `OPENAI_MODEL_API_IDS` or `CLAUDE_MODEL_API_IDS`
+- Map it to the provider's real API model ID (used by `resolveApiModelId()`)
+
+**OpenAI:** multiple UI variants can map to one base model:
+
+```ts
+'gpt-5.5-instant': 'gpt-5.5',
+'gpt-5.5-thinking': 'gpt-5.5',
+'gpt-5.5-pro': 'gpt-5.5-pro',
+```
+
+**Claude:** usually 1:1 — use the exact Anthropic model string for both key and value.
+
+### 3. Optional — change app-wide defaults
+
+Only if the new model should be the default everywhere:
+
+| File | Purpose |
+|------|---------|
+| `apps/frontend/src/constants/aiModels.ts` | UI pre-selection |
+| `apps/backend/src/resumes/schemas/resume.schema.ts` | DB default when `aiVersion` is missing |
+| `apps/backend/src/openai/openai.service.ts` | Service fallback when `aiVersion` is omitted |
+| `apps/backend/src/resumes/resumes.service.ts` | Same fallback in resume generation |
+
+### Example
+
+To add **GPT-5.6 Thinking**:
+
+```ts
+// apps/frontend/src/constants/aiModels.ts
+{ label: "GPT-5.6 Thinking", value: "gpt-5.6-thinking" },
+
+// apps/backend/src/ai/ai-models.ts
+'gpt-5.6-thinking': 'gpt-5.6',
+```
+
+No DTO or schema enum updates are needed — `aiVersion` is validated as a non-empty string.
 
 ## Workspaces
 

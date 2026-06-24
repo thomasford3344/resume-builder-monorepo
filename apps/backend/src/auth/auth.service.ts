@@ -3,8 +3,13 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 
 import { UsersService } from '../users/users.service';
-import { UserDocument } from 'src/users/schemas/user.schema';
 import { RegisterDto } from './dto/register.dto';
+
+type AuthUser = {
+  _id: unknown;
+  email: string;
+  [key: string]: unknown;
+};
 
 @Injectable()
 export class AuthService {
@@ -17,10 +22,6 @@ export class AuthService {
     // console.log("email: ", email)
     const user = await this.usersService.find({ email });
 
-    // Generating password
-    // const salt = await bcrypt.genSalt(10);
-    // const password = await bcrypt.hash("JINjinge627~", salt);
-    // console.log("password: ", password);
     if (user && (await bcrypt.compare(pass, user.password))) {
       return {
         _id: user._id,
@@ -33,7 +34,7 @@ export class AuthService {
     return null;
   }
 
-  async login(user: Exclude<UserDocument, 'password'>) {
+  async login(user: AuthUser) {
     const payload = { _id: user._id, email: user.email };
     return {
       user,

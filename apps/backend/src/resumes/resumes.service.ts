@@ -1,10 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { ResumesGateway } from './resumes.gateway';
 import { Model } from 'mongoose';
-import { join } from 'path';
-import { existsSync } from 'fs';
-import { writeFile, mkdir, unlink, readFile } from 'fs/promises';
 import * as PDFKit from 'pdfkit';
 
 import { Resume } from './schemas/resume.schema';
@@ -18,25 +15,66 @@ import {
   ResumePDFTemplate5,
 } from './templates';
 import { OpenAIService } from '../openai/openai.service';
+import { UsersService } from '../users/users.service';
 
 @Injectable()
 export class ResumesService {
-  private readonly uploadsDir = join(process.cwd(), 'uploads', 'resumes');
-
   constructor(
     @InjectModel(Resume.name) private resumeModel: Model<Resume>,
     @InjectModel(User.name) private userModel: Model<User>,
     private openAIService: OpenAIService,
+    private usersService: UsersService,
     private readonly gateway: ResumesGateway
-  ) {
-    // Ensure uploads directory exists
-    this.ensureUploadsDir();
+  ) {}
+
+  private getStoredResumeJson(resume: Resume): ResumeData {
+    if (!resume.resumeJson || typeof resume.resumeJson !== 'object') {
+      throw new NotFoundException('Resume JSON not found');
+    }
+
+    return resume.resumeJson as unknown as ResumeData;
   }
 
-  private async ensureUploadsDir() {
-    if (!existsSync(this.uploadsDir)) {
-      await mkdir(this.uploadsDir, { recursive: true });
+  async getResumeJson(
+    id: string,
+    userId: string,
+  ): Promise<ResumeData> {
+    const resume = await this.resumeModel.findOne({ _id: id, userId }).exec();
+
+    if (!resume) {
+      throw new NotFoundException(`Resume with id ${id} not found`);
     }
+
+    return this.getStoredResumeJson(resume);
+  }
+
+  async validateApiKeyForGeneration(
+    userId: string,
+    aiModel: 'openai' | 'claude',
+  ): Promise<void> {
+    const keys = await this.usersService.getApiKeysForUser(userId);
+
+    if (aiModel === 'claude') {
+      if (!keys.anthropic?.trim()) {
+        throw new BadRequestException(
+          'No Anthropic API key configured. Add your Anthropic API key in Profile settings.',
+        );
+      }
+      return;
+    }
+
+    if (!keys.openai?.trim()) {
+      throw new BadRequestException(
+        'No OpenAI API key configured. Add your OpenAI API key in Profile settings.',
+      );
+    }
+  }
+
+  async markResumeFailed(resumeId: string, userId: string): Promise<void> {
+    await this.resumeModel
+      .updateOne({ _id: resumeId, userId }, { status: 'failed' })
+      .exec();
+    this.gateway.emitFailed(resumeId);
   }
 
   async create(
@@ -51,30 +89,21 @@ export class ResumesService {
     status: string = 'completed',
     aiModel?: string,
     aiVersion?: string,
+    generationSource: 'ai' | 'manual' = 'ai',
   ) {
-    // Generate unique filename
-    const timestamp = Date.now();
-    const jsonFilename = `${timestamp}-${userId}.json`;
-    const jsonFilePath = join(this.uploadsDir, jsonFilename);
-
-    // Convert JSON object to string and save file to server
-    const jsonContent = JSON.stringify(json, null, 2);
-    await writeFile(jsonFilePath, jsonContent, 'utf-8');
-
-    // Generate PDF using template based on user's template setting
     const pdfBuffer = await this.generatePDF(json, userTemplate || 'template1');
 
-    // Save to database
     const resume = new this.resumeModel({
       userId,
       companyName,
       roleType,
       jobDescription,
-      jsonFilePath: jsonFilePath,
+      resumeJson: json,
       conversationId: conversationId,
       status: status,
       aiModel,
       aiVersion,
+      generationSource,
     });
 
     const savedResume = await resume.save();
@@ -119,16 +148,6 @@ export class ResumesService {
     conversationId?: string,
     coverLetter?: string,
   ) {
-    // Generate unique filename
-    const timestamp = Date.now();
-    const jsonFilename = `${timestamp}-${userId}.json`;
-    const jsonFilePath = join(this.uploadsDir, jsonFilename);
-
-    // Convert JSON object to string and save file to server
-    const jsonContent = JSON.stringify(json, null, 2);
-    await writeFile(jsonFilePath, jsonContent, 'utf-8');
-
-    // Generate PDF using template based on user's template setting
     const pdfBuffer = await this.generatePDF(json, userTemplate || 'template1');
 
     // Prepare cover letter if provided
@@ -146,7 +165,7 @@ export class ResumesService {
 
     // Update the resume record
     const updateData: any = {
-      jsonFilePath: jsonFilePath,
+      resumeJson: json,
       conversationId: conversationId,
       status: 'completed',
     };
@@ -2745,11 +2764,13 @@ CANDIDATE_BACKGROUND:
     }
 
     // Call OpenAI API to generate the resume JSON (includes cover_letter)
+    const apiKeys = await this.usersService.getApiKeysForUser(userId);
     const { resumeJson, threadId } = await this.openAIService.generateResume(
       resume.jobDescription,
       instructions,
       (resume.aiModel as 'openai' | 'claude') || 'openai',
       resume.aiVersion || 'gpt-4.1-mini',
+      apiKeys,
     );
 
     // Extract cover letter from resume JSON and remove it from the JSON
@@ -2785,6 +2806,21 @@ CANDIDATE_BACKGROUND:
   }
 
 
+  private stripDatesFromCoverLetterHeader(text: string): string {
+    const dateLinePatterns = [
+      /^\s*(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+\d{4}\s*$/gim,
+      /^\s*(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\.?\s+\d{1,2},?\s+\d{4}\s*$/gim,
+      /^\s*\d{1,2}\/\d{1,2}\/\d{2,4}\s*$/gim,
+    ];
+
+    let result = text;
+    for (const pattern of dateLinePatterns) {
+      result = result.replace(pattern, '');
+    }
+
+    return result.replace(/\n{3,}/g, '\n\n').trim();
+  }
+
   /**
    * Generate a cover letter PDF from text
    */
@@ -2811,52 +2847,68 @@ CANDIDATE_BACKGROUND:
         });
         doc.on('error', reject);
 
-        // Add cover letter text with proper formatting
-        doc
-          .fontSize(15)
-          .text(username, {
-            align: 'left',
-          });
+        const dearMatch = coverLetterText.match(/Dear\s+Hiring/i);
+        const dearIndex = dearMatch?.index ?? -1;
 
-        doc.moveDown(1);
+        let headerText = dearIndex >= 0
+          ? coverLetterText.slice(0, dearIndex).trim()
+          : '';
+        const contentText = dearIndex >= 0
+          ? coverLetterText.slice(dearIndex).trim()
+          : coverLetterText.trim();
 
-        const saluteText = coverLetterText.split("Dear Hiring")[0];
-        const contentText = coverLetterText.replace(saluteText, "");
+        headerText = this.stripDatesFromCoverLetterHeader(headerText);
+
+        const normalizedUsername = username.trim();
+        if (
+          normalizedUsername &&
+          headerText.toLowerCase().startsWith(normalizedUsername.toLowerCase())
+        ) {
+          headerText = headerText
+            .slice(normalizedUsername.length)
+            .replace(/^\s*\n+/, '')
+            .trim();
+        }
+
         const dateText = new Intl.DateTimeFormat('en-US', {
           month: 'short',
           day: 'numeric',
           year: 'numeric',
         }).format(new Date());
 
+        doc.fontSize(15).text(normalizedUsername, { align: 'left' });
+        doc.moveDown(0.35);
+
         doc.fontSize(11);
 
-        doc
-          .text(saluteText, {
-            align: 'justify',
-            lineGap: 3
+        if (headerText) {
+          doc.text(headerText, {
+            align: 'left',
+            lineGap: 1.5,
           });
+          doc.moveDown(0.35);
+        }
 
-        doc
-          .text(dateText, {
+        doc.text(dateText, {
+          align: 'left',
+          lineGap: 1.5,
+        });
+
+        doc.moveDown(0.75);
+
+        if (contentText.split('Sincerely')[0].endsWith('.\n')) {
+          const fixedContentText = contentText
+            .split('Sincerely')
+            .join('\nSincerely');
+          doc.text(fixedContentText, {
             align: 'justify',
-            lineGap: 3
+            lineGap: 1.5,
           });
-
-        doc.moveDown(1);
-
-        if (contentText.split("Sincerely")[0].endsWith(".\n")) {
-          const fixedContentText = contentText.split("Sincerely").join("\nSincerely");
-          doc
-            .text(fixedContentText, {
-              align: 'justify',
-              lineGap: 3
-            });          
         } else {
-          doc
-            .text(contentText, {
-              align: 'justify',
-              lineGap: 3
-            });
+          doc.text(contentText, {
+            align: 'justify',
+            lineGap: 1.5,
+          });
         }
 
         doc.end();
@@ -2887,6 +2939,8 @@ CANDIDATE_BACKGROUND:
     // Use user's custom prompt if available, otherwise use default
     const questionsPrompt = user.questionsPrompt || undefined;
 
+    const apiKeys = await this.usersService.getApiKeysForUser(userId);
+
     // Call OpenAI service with optional custom prompt
     return await this.openAIService.parseAndAnswerQuestions(
       questionsText,
@@ -2895,6 +2949,7 @@ CANDIDATE_BACKGROUND:
       questionsPrompt,
       (aiModel as 'openai' | 'claude') || 'openai',
       aiVersion || 'gpt-4.1-mini',
+      apiKeys,
     );
   }
 
@@ -3033,6 +3088,97 @@ CANDIDATE_BACKGROUND:
     return this.resumeModel.findOne({ _id: id, userId }).exec();
   }
 
+  private normalizeCoverLetterText(coverLetter: unknown): string {
+    let coverLetterText: unknown = coverLetter;
+
+    try {
+      const parsed =
+        typeof coverLetterText === 'string'
+          ? JSON.parse(coverLetterText)
+          : coverLetterText;
+      if (typeof parsed === 'object' && parsed !== null) {
+        coverLetterText =
+          (parsed as { cover_letter?: string; coverLetter?: string })
+            .cover_letter ||
+          (parsed as { cover_letter?: string; coverLetter?: string })
+            .coverLetter ||
+          coverLetterText;
+      }
+    } catch {
+      // Not JSON, use as-is
+    }
+
+    const normalized =
+      typeof coverLetterText === 'string'
+        ? coverLetterText
+        : String(coverLetterText);
+
+    return normalized.replace(/\\n/g, '\n').trim();
+  }
+
+  async generateCoverLetterForResume(
+    id: string,
+    userId: string,
+  ): Promise<{ pdfBuffer: Buffer; userName: string }> {
+    const resume = await this.resumeModel.findOne({ _id: id, userId }).exec();
+
+    if (!resume) {
+      throw new NotFoundException(`Resume with id ${id} not found`);
+    }
+
+    const user = await this.userModel.findById(userId).exec();
+    if (!user) {
+      throw new NotFoundException(`User with ID ${userId} not found`);
+    }
+
+    if (!user.name?.trim()) {
+      throw new NotFoundException('User name not found');
+    }
+
+    const existingCoverLetter = resume.coverLetter
+      ? this.normalizeCoverLetterText(resume.coverLetter)
+      : '';
+
+    let formattedCoverLetter = existingCoverLetter;
+
+    if (!formattedCoverLetter) {
+      if (!resume.jobDescription?.trim()) {
+        throw new BadRequestException(
+          'Job description not found for this resume',
+        );
+      }
+
+      const resumeJson = await this.getResumeJson(id, userId);
+      const aiModel = (resume.aiModel as 'openai' | 'claude') || 'openai';
+
+      await this.validateApiKeyForGeneration(userId, aiModel);
+
+      const apiKeys = await this.usersService.getApiKeysForUser(userId);
+      const coverLetterText = await this.openAIService.generateCoverLetter(
+        resume.jobDescription,
+        resumeJson as unknown as Record<string, unknown>,
+        resume.conversationId,
+        aiModel,
+        resume.aiVersion || 'gpt-4.1-mini',
+        apiKeys,
+        user.coverLetterPrompt,
+      );
+
+      formattedCoverLetter = this.normalizeCoverLetterText(coverLetterText);
+      await this.updateCoverLetter(id, userId, formattedCoverLetter);
+    }
+
+    const pdfBuffer = await this.generateCoverLetterPDF(
+      user.name,
+      formattedCoverLetter,
+    );
+
+    return {
+      pdfBuffer,
+      userName: user.name,
+    };
+  }
+
   async downloadCoverLetterPDF(
     id: string,
     userId: string,
@@ -3062,25 +3208,7 @@ CANDIDATE_BACKGROUND:
       throw new NotFoundException('User name not found for this resume');
     }
 
-    let coverLetterText = resume.coverLetter;
-
-    // Parse if JSON
-    try {
-      const parsed = typeof coverLetterText === 'string' ? JSON.parse(coverLetterText) : coverLetterText;
-      if (typeof parsed === 'object' && parsed !== null) {
-        coverLetterText = parsed.cover_letter || parsed.coverLetter || coverLetterText;
-      }
-    } catch {
-      // Not JSON, use as-is
-    }
-
-    // Ensure it's a string
-    if (typeof coverLetterText !== 'string') {
-      coverLetterText = String(coverLetterText);
-    }
-
-    // Replace escaped newlines with actual newlines
-    coverLetterText = coverLetterText.replace(/\\n/g, '\n');
+    let coverLetterText = this.normalizeCoverLetterText(resume.coverLetter);
 
     // Generate PDF from the stored cover letter text
     const pdfBuffer = await this.generateCoverLetterPDF(user.name, coverLetterText);
@@ -3097,12 +3225,7 @@ CANDIDATE_BACKGROUND:
 
     if (!resume) throw new NotFoundException(`Resume with id ${id} not found`);
 
-    // Read JSON file from disk
-    if (!resume.jsonFilePath || !existsSync(resume.jsonFilePath))
-      throw new NotFoundException('Resume JSON file not found');
-
-    const jsonContent = await readFile(resume.jsonFilePath, 'utf-8');
-    const jsonData = JSON.parse(jsonContent);
+    const jsonData = this.getStoredResumeJson(resume);
 
     // Generate PDF from the JSON data using user's template
     const pdfBuffer = await this.generatePDF(
@@ -3118,13 +3241,9 @@ CANDIDATE_BACKGROUND:
 
     if (!resume) throw new NotFoundException(`Resume with id ${id} not found`);
 
-    // Read JSON file from disk
-    if (!resume.jsonFilePath || !existsSync(resume.jsonFilePath))
-      throw new NotFoundException('Resume JSON file not found');
+    const jsonData = this.getStoredResumeJson(resume);
 
-    const jsonContent = await readFile(resume.jsonFilePath, 'utf-8');
-
-    return jsonContent;
+    return JSON.stringify(jsonData, null, 2);
   }
 
   async delete(id: string, userId: string): Promise<void> {
@@ -3134,17 +3253,6 @@ CANDIDATE_BACKGROUND:
       throw new NotFoundException(`Resume with id ${id} not found`);
     }
 
-    // Delete file from disk
-    if (resume.jsonFilePath && existsSync(resume.jsonFilePath)) {
-      try {
-        await unlink(resume.jsonFilePath);
-      } catch (error) {
-        // Log error but continue with database deletion
-        console.error(`Failed to delete file ${resume.jsonFilePath}:`, error);
-      }
-    }
-
-    // Delete from database
     await this.resumeModel.findByIdAndDelete(id).exec();
   }
 
@@ -3155,26 +3263,12 @@ CANDIDATE_BACKGROUND:
     const failed: string[] = [];
     let deleted = 0;
 
-    // Get all resumes that belong to the user
     const resumes = await this.resumeModel
       .find({ _id: { $in: ids }, userId })
       .exec();
 
     for (const resume of resumes) {
       try {
-        // Delete file from disk
-        if (resume.jsonFilePath && existsSync(resume.jsonFilePath)) {
-          try {
-            await unlink(resume.jsonFilePath);
-          } catch (error) {
-            console.error(
-              `Failed to delete file ${resume.jsonFilePath}:`,
-              error,
-            );
-          }
-        }
-
-        // Delete from database
         await this.resumeModel.findByIdAndDelete(resume._id).exec();
         deleted++;
       } catch (error) {

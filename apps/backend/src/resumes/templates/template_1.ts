@@ -777,15 +777,12 @@ export class ResumePDFTemplate1 {
         ? `${dateRange} | ${location}`.trim()
         : dateRange.trim();
 
-      console.log("dateRange: ", dateRange)
-
       let graduated = "";
       if (dateRange.includes(" - ")) {
         graduated = dateRange.split(" - ")[1];
       } else if (dateRange.includes(" – ")) {
         graduated = dateRange.split(" – ")[1];
       } 
-      console.log("graduated: ", graduated)
       let graduatedYear = "";
       if (graduated.includes("/")) {
         graduatedYear = graduated.split("/")[1];

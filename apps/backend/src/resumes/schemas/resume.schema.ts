@@ -36,8 +36,15 @@ export class Resume {
   @Prop({ required: false, default: 'gpt-4.1-mini' })
   aiVersion?: string;
 
-  @Prop({ required: false })
-  jsonFilePath?: string;
+  @Prop({
+    required: false,
+    enum: ['ai', 'manual'],
+    default: 'ai',
+  })
+  generationSource?: string;
+
+  @Prop({ type: MongooseSchema.Types.Mixed, required: false })
+  resumeJson?: Record<string, unknown>;
 
   @Prop({ required: false })
   conversationId?: string;

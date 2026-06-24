@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
 import { ResumeData } from 'src/resumes/templates';
@@ -8,31 +7,52 @@ import {
   resolveApiModelId,
 } from '../ai/ai-models';
 import { RESUME_JSON_SCHEMA } from '../ai/resume-json-schema';
+import {
+  DEFAULT_COVER_LETTER_PROMPT,
+  DEFAULT_QUESTIONS_PROMPT,
+} from '../ai/default-prompts';
+
+export interface UserApiKeys {
+  openai?: string | null;
+  anthropic?: string | null;
+}
 
 @Injectable()
 export class OpenAIService {
-  private client: OpenAI;
-  private anthropicClient: Anthropic | null = null;
-
-  constructor(private configService: ConfigService) {
-    const apiKey = this.configService.get<string>('openai.apiKey');
-    if (!apiKey) {
-      throw new Error('OpenAI API key is not configured');
-    }
-    this.client = new OpenAI({
-      apiKey: apiKey,
-    });
-
-    const anthropicApiKey = this.configService.get<string>('anthropic.apiKey');
-    if (anthropicApiKey) {
-      this.anthropicClient = new Anthropic({
-        apiKey: anthropicApiKey,
-      });
-    }
-  }
-
   private cleanText(text: string): string {
     return text.replace(/\s+/g, ' ').trim();
+  }
+
+  private resolveOpenaiKey(apiKeys?: UserApiKeys): string {
+    const key = apiKeys?.openai?.trim();
+    if (!key) {
+      throw new Error(
+        'No OpenAI API key configured. Add your OpenAI API key in Profile settings.',
+      );
+    }
+    return key;
+  }
+
+  private resolveAnthropicKey(apiKeys?: UserApiKeys): string {
+    const key = apiKeys?.anthropic?.trim();
+    if (!key) {
+      throw new Error(
+        'No Anthropic API key configured. Add your Anthropic API key in Profile settings.',
+      );
+    }
+    return key;
+  }
+
+  private getOpenAIClient(apiKeys?: UserApiKeys): OpenAI {
+    return new OpenAI({
+      apiKey: this.resolveOpenaiKey(apiKeys),
+    });
+  }
+
+  private getAnthropicClient(apiKeys?: UserApiKeys): Anthropic {
+    return new Anthropic({
+      apiKey: this.resolveAnthropicKey(apiKeys),
+    });
   }
 
   async generateResume(
@@ -40,44 +60,87 @@ export class OpenAIService {
     userInstructions: string,
     aiProvider: AiProvider = 'openai',
     aiVersion: string = 'gpt-4.1-mini',
+    apiKeys?: UserApiKeys,
   ): Promise<{ resumeJson: ResumeData; threadId: string }> {
     if (!userInstructions || !userInstructions.trim()) {
       throw new Error('User instructions are required and cannot be empty');
     }
 
     const fullInstructions = this.cleanText(userInstructions);
-    const conversationId = `conv_${Date.now()}_${Math.random().toString(36).substring(7)}`;
     const cleanedJobDescription = this.cleanText(jobDescription);
     const apiModelId = resolveApiModelId(aiProvider, aiVersion);
 
-    let resumeJson: ResumeData;
-
     if (aiProvider === 'claude') {
-      resumeJson = await this.generateResumeWithClaude(
+      const { resumeJson, conversationId } = await this.generateResumeWithClaude(
         cleanedJobDescription,
         fullInstructions,
         apiModelId,
+        apiKeys,
       );
-    } else {
-      resumeJson = await this.generateResumeWithOpenAI(
-        cleanedJobDescription,
-        fullInstructions,
-        apiModelId,
-      );
+
+      return {
+        resumeJson,
+        threadId: conversationId,
+      };
     }
+
+    const { resumeJson, responseId } = await this.generateResumeWithOpenAI(
+      cleanedJobDescription,
+      fullInstructions,
+      apiModelId,
+      apiKeys,
+    );
 
     return {
       resumeJson,
-      threadId: conversationId,
+      threadId: responseId,
     };
+  }
+
+  async generateCoverLetter(
+    jobDescription: string,
+    resumeJson: Record<string, unknown>,
+    conversationId: string | undefined,
+    aiProvider: AiProvider = 'openai',
+    aiVersion: string = 'gpt-4.1-mini',
+    apiKeys?: UserApiKeys,
+    customPrompt?: string,
+  ): Promise<string> {
+    const cleanedJobDescription = this.cleanText(jobDescription);
+    const compactResumeJson = JSON.stringify(resumeJson);
+    const coverLetterInstructions = this.cleanText(
+      customPrompt?.trim() || DEFAULT_COVER_LETTER_PROMPT,
+    );
+    const apiModelId = resolveApiModelId(aiProvider, aiVersion);
+
+    if (aiProvider === 'claude') {
+      return this.generateCoverLetterWithClaude(
+        cleanedJobDescription,
+        compactResumeJson,
+        coverLetterInstructions,
+        apiModelId,
+        apiKeys,
+      );
+    }
+
+    return this.generateCoverLetterWithOpenAI(
+      conversationId,
+      cleanedJobDescription,
+      compactResumeJson,
+      coverLetterInstructions,
+      apiModelId,
+      apiKeys,
+    );
   }
 
   private async generateResumeWithOpenAI(
     jobDescription: string,
     instructions: string,
     model: string,
-  ): Promise<ResumeData> {
-    const response = await this.client.responses.create({
+    apiKeys?: UserApiKeys,
+  ): Promise<{ resumeJson: ResumeData; responseId: string }> {
+    const client = this.getOpenAIClient(apiKeys);
+    const response = await client.responses.create({
       model,
       instructions,
       input: jobDescription,
@@ -91,12 +154,19 @@ export class OpenAIService {
       },
     });
 
+    if (!response.id) {
+      throw new Error('No response id received from OpenAI');
+    }
+
     if (!response.output_text) {
       throw new Error('No output text received from OpenAI');
     }
 
     try {
-      return JSON.parse(response.output_text);
+      return {
+        resumeJson: JSON.parse(response.output_text),
+        responseId: response.id,
+      };
     } catch (error) {
       throw new Error(
         `Failed to parse JSON from OpenAI response: ${error.message}. Response: ${response.output_text.substring(0, 200)}`,
@@ -108,16 +178,12 @@ export class OpenAIService {
     jobDescription: string,
     instructions: string,
     model: string,
-  ): Promise<ResumeData> {
-    if (!this.anthropicClient) {
-      throw new Error(
-        'Anthropic API key is not configured. Set ANTHROPIC_API_KEY in environment.',
-      );
-    }
-
+    apiKeys?: UserApiKeys,
+  ): Promise<{ resumeJson: ResumeData; conversationId: string }> {
+    const client = this.getAnthropicClient(apiKeys);
     const schemaPrompt = `You must respond with valid JSON only, matching this schema exactly:\n${JSON.stringify(RESUME_JSON_SCHEMA)}`;
 
-    const response = await this.anthropicClient.messages.create({
+    const response = await client.messages.create({
       model,
       max_tokens: 16384,
       system: `${instructions}\n\n${schemaPrompt}`,
@@ -128,6 +194,10 @@ export class OpenAIService {
         },
       ],
     });
+
+    if (!response.id) {
+      throw new Error('No conversation id received from Claude');
+    }
 
     const textBlock = response.content.find((block) => block.type === 'text');
     if (!textBlock || textBlock.type !== 'text') {
@@ -140,12 +210,73 @@ export class OpenAIService {
       : outputText;
 
     try {
-      return JSON.parse(jsonText);
+      return {
+        resumeJson: JSON.parse(jsonText),
+        conversationId: response.id,
+      };
     } catch (error) {
       throw new Error(
         `Failed to parse JSON from Claude response: ${error.message}. Response: ${outputText.substring(0, 200)}`,
       );
     }
+  }
+
+  private async generateCoverLetterWithOpenAI(
+    conversationId: string | undefined,
+    jobDescription: string,
+    resumeJson: string,
+    instructions: string,
+    model: string,
+    apiKeys?: UserApiKeys,
+  ): Promise<string> {
+    const client = this.getOpenAIClient(apiKeys);
+    const request: OpenAI.Responses.ResponseCreateParams = {
+      model,
+      instructions,
+      input: conversationId
+        ? 'Generate the cover letter now.'
+        : `Job Description: ${jobDescription}\n\nResume JSON: ${resumeJson}\n\nGenerate the cover letter now.`,
+    };
+
+    if (conversationId) {
+      request.previous_response_id = conversationId;
+    }
+
+    const response = await client.responses.create(request);
+
+    if (!response.output_text?.trim()) {
+      throw new Error('No cover letter text received from OpenAI');
+    }
+
+    return response.output_text.trim();
+  }
+
+  private async generateCoverLetterWithClaude(
+    jobDescription: string,
+    resumeJson: string,
+    instructions: string,
+    model: string,
+    apiKeys?: UserApiKeys,
+  ): Promise<string> {
+    const client = this.getAnthropicClient(apiKeys);
+    const response = await client.messages.create({
+      model,
+      max_tokens: 1800,
+      system: instructions,
+      messages: [
+        {
+          role: 'user',
+          content: `Job Description: ${jobDescription}\n\nResume JSON: ${resumeJson}\n\nGenerate the cover letter now.`,
+        },
+      ],
+    });
+
+    const textBlock = response.content.find((block) => block.type === 'text');
+    if (!textBlock || textBlock.type !== 'text' || !textBlock.text.trim()) {
+      throw new Error('No cover letter text received from Claude');
+    }
+
+    return textBlock.text.trim();
   }
 
   async parseAndAnswerQuestions(
@@ -155,18 +286,11 @@ export class OpenAIService {
     customPrompt?: string,
     aiProvider: AiProvider = 'openai',
     aiVersion: string = 'gpt-4.1-mini',
+    apiKeys?: UserApiKeys,
   ): Promise<Array<{ question: string; answer: string }>> {
-    const instructions =
-      customPrompt ||
-      `
-      You are an assistant who answers questions while job applying on behalf of me.  
-      The job description and resume JSON content will be provided.
-
-      Answers must be specific and always positive.  
-      For any "describe" type question, the answer should be 2-4 sentences.
-
-      The goal is to make HR want to contact me for next steps.
-    `;
+    const instructions = this.cleanText(
+      customPrompt?.trim() || DEFAULT_QUESTIONS_PROMPT,
+    );
 
     const cleanedJobDescription = this.cleanText(jobDescription);
     const cleanedInstructions = this.cleanText(instructions);
@@ -186,6 +310,7 @@ export class OpenAIService {
         cleanedQuestionsText,
         fullInstructions,
         apiModelId,
+        apiKeys,
       );
     }
 
@@ -193,6 +318,7 @@ export class OpenAIService {
       cleanedQuestionsText,
       fullInstructions,
       apiModelId,
+      apiKeys,
     );
   }
 
@@ -200,8 +326,10 @@ export class OpenAIService {
     questionsText: string,
     instructions: string,
     model: string,
+    apiKeys?: UserApiKeys,
   ): Promise<Array<{ question: string; answer: string }>> {
-    const response = await this.client.responses.create({
+    const client = this.getOpenAIClient(apiKeys);
+    const response = await client.responses.create({
       model,
       instructions,
       input: questionsText,
@@ -251,17 +379,13 @@ export class OpenAIService {
     questionsText: string,
     instructions: string,
     model: string,
+    apiKeys?: UserApiKeys,
   ): Promise<Array<{ question: string; answer: string }>> {
-    if (!this.anthropicClient) {
-      throw new Error(
-        'Anthropic API key is not configured. Set ANTHROPIC_API_KEY in environment.',
-      );
-    }
-
+    const client = this.getAnthropicClient(apiKeys);
     const schemaPrompt =
       'Respond with valid JSON only in this format: {"questions_and_answers": [{"question": "...", "answer": "..."}]}';
 
-    const response = await this.anthropicClient.messages.create({
+    const response = await client.messages.create({
       model,
       max_tokens: 8192,
       system: `${instructions}\n\n${schemaPrompt}`,

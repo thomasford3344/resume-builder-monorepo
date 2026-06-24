@@ -40,11 +40,35 @@ export const CLAUDE_MODELS: AiModelOption[] = [
 export const DEFAULT_AI_PROVIDER: AiProvider = "claude";
 export const DEFAULT_OPENAI_VERSION = "gpt-4.1-mini";
 export const DEFAULT_CLAUDE_VERSION = "claude-sonnet-4-6";
+export const DEFAULT_FROM_JSON_AI_PROVIDER: AiProvider = "openai";
+export const DEFAULT_FROM_JSON_AI_VERSION = "gpt-5.5-thinking";
 
 export const DEFAULT_AI_VERSION =
   DEFAULT_AI_PROVIDER === "openai"
     ? DEFAULT_OPENAI_VERSION
     : DEFAULT_CLAUDE_VERSION;
+
+export function resolveUserDefaultAi(
+  profile?: {
+    defaultAiModel?: AiProvider;
+    defaultAiVersion?: string;
+  } | null,
+): { aiModel: AiProvider; aiVersion: string } {
+  const aiModel =
+    profile?.defaultAiModel === "openai" || profile?.defaultAiModel === "claude"
+      ? profile.defaultAiModel
+      : DEFAULT_AI_PROVIDER;
+  const models = aiModel === "openai" ? OPENAI_MODELS : CLAUDE_MODELS;
+  const fallbackVersion =
+    aiModel === "openai" ? DEFAULT_OPENAI_VERSION : DEFAULT_CLAUDE_VERSION;
+  const candidate = profile?.defaultAiVersion;
+  const aiVersion =
+    candidate && models.some((model) => model.value === candidate)
+      ? candidate
+      : fallbackVersion;
+
+  return { aiModel, aiVersion };
+}
 
 export function getModelLabel(provider: AiProvider, version: string): string {
   const models = provider === "openai" ? OPENAI_MODELS : CLAUDE_MODELS;
@@ -52,6 +76,39 @@ export function getModelLabel(provider: AiProvider, version: string): string {
   return match?.label ?? version;
 }
 
+export function getModelVersionLabel(
+  provider: AiProvider,
+  version: string,
+): string {
+  const label = getModelLabel(provider, version);
+
+  if (provider === "openai") {
+    return label.replace(/^GPT-?/i, "");
+  }
+
+  if (provider === "claude") {
+    return label.replace(/^Claude\s+/i, "");
+  }
+
+  return label;
+}
+
 export function getProviderLabel(provider: AiProvider): string {
   return provider === "openai" ? "OpenAI" : "Claude";
+}
+
+export function getAiVersionDisplay(
+  aiModel: AiProvider | undefined,
+  aiVersion: string | undefined,
+  generationSource?: "ai" | "manual",
+): string {
+  const provider = aiModel || "openai";
+  const version = aiVersion || DEFAULT_OPENAI_VERSION;
+  const label = getModelLabel(provider, version);
+
+  if (generationSource === "manual") {
+    return `Manual: ${label}`;
+  }
+
+  return label;
 }

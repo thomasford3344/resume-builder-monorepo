@@ -22,11 +22,12 @@ export interface ResumeResponse {
   companyName: string;
   roleType: string;
   jobDescription: string;
-  jsonFilePath?: string;
+  resumeJson?: Record<string, unknown>;
   conversationId?: string;
   status?: 'in_progress' | 'completed' | 'failed';
   aiModel?: 'openai' | 'claude';
   aiVersion?: string;
+  generationSource?: 'ai' | 'manual';
   coverLetter?: string;
   answers?: Array<{ question: string; answer: string }>;
   createdAt?: string;
@@ -75,7 +76,21 @@ export const generateResumeStream = async (
   });
 
   if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
+    const errorText = await response.text();
+    let message = `HTTP error! status: ${response.status}`;
+    try {
+      const errorJson = JSON.parse(errorText);
+      if (errorJson.message) {
+        message = Array.isArray(errorJson.message)
+          ? errorJson.message.join(', ')
+          : errorJson.message;
+      }
+    } catch {
+      if (errorText) {
+        message = errorText;
+      }
+    }
+    throw new Error(message);
   }
 
   const reader = response.body?.getReader();
@@ -98,29 +113,32 @@ export const generateResumeStream = async (
 
     for (const line of lines) {
       if (line.startsWith('data: ')) {
+        let eventData: { type?: string; message?: string; resumeId?: string; resume?: GenerateResumeResponse['resume'] };
         try {
-          const eventData = JSON.parse(line.slice(6));
-          
-          if (eventData.type === 'started') {
-            // Resume generation started, return resumeId for redirect
-            finalResult = {
-              resume: { filename: '', pdf: '' }, // Placeholder, will be updated later
-              resumeId: eventData.resumeId,
-            };
-            // Return early so frontend can redirect
-            return finalResult;
-          } else if (eventData.type === 'complete') {
-            // Final result
-            finalResult = {
-              resume: eventData.resume,
-              resumeId: eventData.resumeId,
-            };
-          } else if (eventData.type === 'error') {
-            throw new Error(eventData.message);
-          }
-        } catch (parseError) {
-          // Skip invalid JSON lines
+          eventData = JSON.parse(line.slice(6));
+        } catch {
           console.warn('Failed to parse SSE data:', line);
+          continue;
+        }
+
+        if (eventData.type === 'started') {
+          finalResult = {
+            resume: { filename: '', pdf: '' },
+            resumeId: eventData.resumeId || '',
+          };
+          return finalResult;
+        }
+
+        if (eventData.type === 'complete') {
+          finalResult = {
+            resume: eventData.resume || { filename: '', pdf: '' },
+            resumeId: eventData.resumeId || '',
+          };
+          continue;
+        }
+
+        if (eventData.type === 'error') {
+          throw new Error(eventData.message || 'Failed to generate resume');
         }
       }
     }
@@ -237,6 +255,13 @@ export const downloadCoverLetter = async (id: string) => {
     responseType: "blob",
   });
   return res; // Return full response to access headers
+};
+
+export const generateCoverLetter = async (id: string) => {
+  const res = await api.post(`/api/resumes/${id}/generate-cover-letter`, {}, {
+    responseType: "blob",
+  });
+  return res;
 };
 
 export interface FromJsonDto {

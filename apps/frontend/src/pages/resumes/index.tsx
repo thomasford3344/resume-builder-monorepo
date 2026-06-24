@@ -26,6 +26,7 @@ import {
   MenuItem,
   ListItemIcon,
   ListItemText,
+  Divider,
 } from "@mui/material";
 import {
   Delete as DeleteIcon,
@@ -37,9 +38,12 @@ import {
   QuestionAnswer as QuestionAnswerIcon,
   Visibility as VisibilityIcon,
   ContentCopy as ContentCopyIcon,
-  Person as PersonIcon,
+  Settings as SettingsIcon,
   Logout as LogoutIcon,
+  LightMode as LightModeIcon,
+  DarkMode as DarkModeIcon,
 } from "@mui/icons-material";
+import { OpenAI, Claude } from "@lobehub/icons";
 import { Link, useNavigate } from "react-router";
 import {
   getResumes,
@@ -47,27 +51,107 @@ import {
   bulkDeleteResumes,
   downloadResume,
   downloadResumeJSON,
+  generateCoverLetter,
   type ResumeResponse,
   type FilterResumeParams,
 } from "../../services/resumeService";
 import { toast } from "react-toastify";
 import moment from "moment";
-import CoverLetterDialog from "../../components/resumes/CoverLetterDialog";
 import QuestionsDialog from "../../components/resumes/QuestionsDialog";
+import AiVersionBadge from "../../components/resumes/AiVersionBadge";
 import { useAuth } from "../../components/common/AuthContext";
+import { useThemeMode } from "../../components/common/ThemeContext";
 import { getProfile } from "../../services/userService";
 import { socket } from "./socket";
-import {
-  getModelLabel,
-  getProviderLabel,
-  type AiProvider,
-} from "../../constants/aiModels";
 
 const getLocalDateString = (date = new Date()) => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+};
+
+const countChipSx = {
+  "& .MuiChip-icon": {
+    marginLeft: "6px",
+    marginRight: "-2px",
+  },
+  "& .MuiChip-label": {
+    pl: 0.75,
+  },
+};
+
+const sourceChipSelectedSx = {
+  gpt: {
+    bgcolor: "primary.main",
+    color: "primary.contrastText",
+    borderColor: "primary.main",
+    fontWeight: 700,
+    boxShadow: 3,
+    "& .MuiChip-icon": {
+      color: "primary.contrastText",
+    },
+    "&:hover": {
+      bgcolor: "primary.dark",
+    },
+  },
+  claude: {
+    bgcolor: "#D97757",
+    color: "#fff",
+    borderColor: "#D97757",
+    fontWeight: 700,
+    boxShadow: 3,
+    "& .MuiChip-icon": {
+      color: "#fff",
+    },
+    "&:hover": {
+      bgcolor: "#C96A4D",
+    },
+  },
+  manual: {
+    bgcolor: "secondary.main",
+    color: "secondary.contrastText",
+    borderColor: "secondary.main",
+    fontWeight: 700,
+    boxShadow: 3,
+    "& .MuiChip-icon": {
+      color: "secondary.contrastText",
+    },
+    "&:hover": {
+      bgcolor: "secondary.dark",
+    },
+  },
+} as const;
+
+type ChipFilter =
+  | "completed"
+  | "in_progress"
+  | "failed"
+  | "gpt"
+  | "claude"
+  | "manual";
+
+const matchesChipFilter = (resume: ResumeResponse, filter: ChipFilter) => {
+  switch (filter) {
+    case "completed":
+      return resume.status === "completed";
+    case "in_progress":
+      return resume.status === "in_progress";
+    case "failed":
+      return resume.status === "failed";
+    case "manual":
+      return resume.generationSource === "manual";
+    case "gpt":
+      return (
+        resume.generationSource !== "manual" && resume.aiModel !== "claude"
+      );
+    case "claude":
+      return (
+        resume.generationSource !== "manual" && resume.aiModel === "claude"
+      );
+    default:
+      return true;
+  }
 };
 
 const Resumes: React.FC = () => {
@@ -91,7 +175,8 @@ const Resumes: React.FC = () => {
       endDate: today,
     };
   });
-  const [coverLetterResumeId, setCoverLetterResumeId] = React.useState<
+  const [chipFilter, setChipFilter] = React.useState<ChipFilter | null>(null);
+  const [generatingCoverLetterId, setGeneratingCoverLetterId] = React.useState<
     string | null
   >(null);
   const [questionsResumeId, setQuestionsResumeId] = React.useState<
@@ -112,13 +197,14 @@ const Resumes: React.FC = () => {
 
   const navigate = useNavigate();
   const { logout } = useAuth();
+  const { mode, setMode } = useThemeMode();
 
   const avatarInitial = userEmail
     ? userEmail.charAt(0).toUpperCase()
     : "?";
 
   const displayName = userName.trim()
-    ? userName.trim()
+    ? userName.trim().split(" ")[0]
     : userEmail.split("@")[0] || "";
 
   const handleAvatarMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
@@ -129,14 +215,19 @@ const Resumes: React.FC = () => {
     setAvatarMenuAnchor(null);
   };
 
-  const handleProfileClick = () => {
+  const handleSettingsClick = () => {
     handleAvatarMenuClose();
-    navigate("/profile");
+    navigate("/settings");
   };
 
   const handleLogoutClick = () => {
     handleAvatarMenuClose();
     setLogoutDialogOpen(true);
+  };
+
+  const handleThemeChange = (nextMode: "light" | "dark") => {
+    setMode(nextMode);
+    handleAvatarMenuClose();
   };
 
   React.useEffect(() => {
@@ -241,14 +332,12 @@ const Resumes: React.FC = () => {
     field: keyof FilterResumeParams,
     value: string,
   ) => {
-    setFilters((prev) => ({
-      ...prev,
+    const updatedFilters = {
+      ...filters,
       [field]: value,
-    }));
-  };
-
-  const handleApplyFilters = () => {
-    loadResumes(filters);
+    };
+    setFilters(updatedFilters);
+    loadResumes(updatedFilters);
   };
 
   const handleClearFilters = () => {
@@ -259,7 +348,83 @@ const Resumes: React.FC = () => {
       endDate: "",
     };
     setFilters(emptyFilters);
+    setChipFilter(null);
+    setSelectedResumes(new Set());
     loadResumes(emptyFilters);
+  };
+
+  const handleChipFilterClick = (filter: ChipFilter) => {
+    setChipFilter((current) => (current === filter ? null : filter));
+    setSelectedResumes(new Set());
+  };
+
+  const resumeCounts = React.useMemo(() => {
+    const completed = resumes.filter((r) => r.status === "completed").length;
+    const inProgress = resumes.filter((r) => r.status === "in_progress").length;
+    const failed = resumes.filter((r) => r.status === "failed").length;
+    const manual = resumes.filter((r) => r.generationSource === "manual").length;
+    const gpt = resumes.filter(
+      (r) => r.generationSource !== "manual" && r.aiModel !== "claude",
+    ).length;
+    const claude = resumes.filter(
+      (r) => r.generationSource !== "manual" && r.aiModel === "claude",
+    ).length;
+
+    return {
+      total: resumes.length,
+      completed,
+      inProgress,
+      failed,
+      manual,
+      gpt,
+      claude,
+    };
+  }, [resumes]);
+
+  const filteredResumes = React.useMemo(() => {
+    if (!chipFilter) {
+      return resumes;
+    }
+
+    return resumes.filter((resume) => matchesChipFilter(resume, chipFilter));
+  }, [resumes, chipFilter]);
+
+  const getChipProps = (filter: ChipFilter) => ({
+    clickable: true,
+    onClick: () => handleChipFilterClick(filter),
+    variant: (chipFilter === filter ? "filled" : "outlined") as
+      | "filled"
+      | "outlined",
+    sx: { cursor: "pointer" },
+  });
+
+  const getSourceChipProps = (filter: "gpt" | "claude" | "manual") => {
+    const isSelected = chipFilter === filter;
+
+    return {
+      clickable: true,
+      onClick: () => handleChipFilterClick(filter),
+      variant: (isSelected ? "filled" : "outlined") as "filled" | "outlined",
+      color:
+        filter === "gpt"
+          ? ("primary" as const)
+          : filter === "manual"
+            ? ("secondary" as const)
+            : undefined,
+      sx: {
+        ...countChipSx,
+        cursor: "pointer",
+        borderWidth: isSelected ? 2 : 1,
+        transition: "all 0.15s ease",
+        ...(isSelected
+          ? sourceChipSelectedSx[filter]
+          : {
+              "&:hover": {
+                bgcolor: "action.hover",
+              },
+            }),
+      },
+    };
   };
 
   const handleDownloadResume = async (id: string) => {
@@ -332,6 +497,63 @@ const Resumes: React.FC = () => {
     }
   };
 
+  const handleGenerateCoverLetter = async (id: string) => {
+    setGeneratingCoverLetterId(id);
+    try {
+      const response = await generateCoverLetter(id);
+      const pdfBlob = response.data;
+
+      const contentDisposition = response.headers["content-disposition"];
+      let filename = "Cover_Letter.pdf";
+
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(
+          /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/,
+        );
+        if (filenameMatch?.[1]) {
+          filename = filenameMatch[1].replace(/['"]/g, "");
+        }
+      }
+
+      const url = window.URL.createObjectURL(pdfBlob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast.success("Cover letter generated and downloaded successfully!");
+    } catch (error: unknown) {
+      const err = error as {
+        response?: { data?: Blob };
+        message?: string;
+      };
+      let message = "Failed to generate cover letter";
+
+      if (err.response?.data instanceof Blob) {
+        try {
+          const text = await err.response.data.text();
+          const parsed = JSON.parse(text) as { message?: string | string[] };
+          if (parsed.message) {
+            message = Array.isArray(parsed.message)
+              ? parsed.message.join(", ")
+              : parsed.message;
+          }
+        } catch {
+          // use default message
+        }
+      } else if (err.message) {
+        message = err.message;
+      }
+
+      toast.error(message);
+    } finally {
+      setGeneratingCoverLetterId(null);
+    }
+  };
+
   const handleSelectResume = (id: string) => {
     setSelectedResumes((prev) => {
       const newSet = new Set(prev);
@@ -345,10 +567,10 @@ const Resumes: React.FC = () => {
   };
 
   const handleSelectAll = () => {
-    if (selectedResumes.size === resumes.length) {
+    if (selectedResumes.size === filteredResumes.length) {
       setSelectedResumes(new Set());
     } else {
-      setSelectedResumes(new Set(resumes.map((r) => r._id)));
+      setSelectedResumes(new Set(filteredResumes.map((r) => r._id)));
     }
   };
 
@@ -447,7 +669,7 @@ const Resumes: React.FC = () => {
             to="/resumes/new"
             startIcon={<AddIcon />}
           >
-            Create Resume
+            Generate Resume
           </Button>
           <Button
             variant="contained"
@@ -494,12 +716,29 @@ const Resumes: React.FC = () => {
             anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
             transformOrigin={{ vertical: "top", horizontal: "right" }}
           >
-            <MenuItem onClick={handleProfileClick}>
+            <MenuItem onClick={handleSettingsClick}>
               <ListItemIcon>
-                <PersonIcon fontSize="small" />
+                <SettingsIcon fontSize="small" />
               </ListItemIcon>
-              <ListItemText>Profile</ListItemText>
+              <ListItemText>Settings</ListItemText>
             </MenuItem>
+            <Divider />
+            {mode === "dark" ? (
+              <MenuItem onClick={() => handleThemeChange("light")}>
+                <ListItemIcon>
+                  <LightModeIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText>Light</ListItemText>
+              </MenuItem>
+            ) : (
+              <MenuItem onClick={() => handleThemeChange("dark")}>
+                <ListItemIcon>
+                  <DarkModeIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText>Dark</ListItemText>
+              </MenuItem>
+            )}
+            <Divider />
             <MenuItem onClick={handleLogoutClick}>
               <ListItemIcon>
                 <LogoutIcon fontSize="small" />
@@ -515,8 +754,8 @@ const Resumes: React.FC = () => {
           <Typography variant="h6" gutterBottom>
             Filter Resumes
           </Typography>
-          <Grid container spacing={2}>
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <Grid container spacing={2} alignItems="flex-end">
+            <Grid size={{ xs: 12, sm: 6, md: "grow" }}>
               <TextField
                 label="Company Name"
                 value={filters.companyName || ""}
@@ -527,7 +766,7 @@ const Resumes: React.FC = () => {
                 size="small"
               />
             </Grid>
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <Grid size={{ xs: 12, sm: 6, md: "grow" }}>
               <TextField
                 label="Role Type"
                 value={filters.roleType || ""}
@@ -536,7 +775,7 @@ const Resumes: React.FC = () => {
                 size="small"
               />
             </Grid>
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <Grid size={{ xs: 12, sm: 6, md: "grow" }}>
               <TextField
                 label="Start Date"
                 type="date"
@@ -549,7 +788,7 @@ const Resumes: React.FC = () => {
                 InputLabelProps={{ shrink: true }}
               />
             </Grid>
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <Grid size={{ xs: 12, sm: 6, md: "grow" }}>
               <TextField
                 label="End Date"
                 type="date"
@@ -560,19 +799,77 @@ const Resumes: React.FC = () => {
                 InputLabelProps={{ shrink: true }}
               />
             </Grid>
+            <Grid size={{ xs: 12, sm: "auto" }}>
+              <Button
+                variant="outlined"
+                startIcon={<ClearIcon />}
+                onClick={handleClearFilters}
+                color="secondary"
+                size="small"
+                sx={{ height: 40 }}
+              >
+                Clear
+              </Button>
+            </Grid>
           </Grid>
-          <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
-            <Button variant="contained" onClick={handleApplyFilters}>
-              Apply Filters
-            </Button>
-            <Button
-              variant="outlined"
-              startIcon={<ClearIcon />}
-              onClick={handleClearFilters}
-              color="secondary"
-            >
-              Clear
-            </Button>
+          <Stack spacing={1} sx={{ mt: 2 }}>
+            <Typography variant="body2" color="text.secondary">
+              {loading
+                ? "Loading resumes..."
+                : chipFilter
+                  ? `${filteredResumes.length} of ${resumeCounts.total} resume${resumeCounts.total !== 1 ? "s" : ""}`
+                  : `${resumeCounts.total} resume${resumeCounts.total !== 1 ? "s" : ""}`}
+            </Typography>
+            {!loading && resumeCounts.total > 0 && (
+              <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                <Chip
+                  label={`${resumeCounts.completed} completed`}
+                  size="small"
+                  color="success"
+                  {...getChipProps("completed")}
+                />
+                {resumeCounts.inProgress > 0 && (
+                  <Chip
+                    label={`${resumeCounts.inProgress} in progress`}
+                    size="small"
+                    color="info"
+                    {...getChipProps("in_progress")}
+                  />
+                )}
+                {resumeCounts.failed > 0 && (
+                  <Chip
+                    label={`${resumeCounts.failed} failed`}
+                    size="small"
+                    color="error"
+                    {...getChipProps("failed")}
+                  />
+                )}
+                <Chip
+                  icon={<OpenAI size={16} />}
+                  label={resumeCounts.gpt}
+                  size="small"
+                  {...getSourceChipProps("gpt")}
+                />
+                <Chip
+                  icon={
+                    chipFilter === "claude" ? (
+                      <Claude size={16} color="#fff" />
+                    ) : (
+                      <Claude.Color size={16} />
+                    )
+                  }
+                  label={resumeCounts.claude}
+                  size="small"
+                  {...getSourceChipProps("claude")}
+                />
+                <Chip
+                  icon={<CodeIcon sx={{ fontSize: 16 }} />}
+                  label={resumeCounts.manual}
+                  size="small"
+                  {...getSourceChipProps("manual")}
+                />
+              </Stack>
+            )}
           </Stack>
         </Paper>
 
@@ -590,7 +887,7 @@ const Resumes: React.FC = () => {
               to="/resumes/new"
               startIcon={<AddIcon />}
             >
-              Create Resume
+              Generate Resume
             </Button>
             <Button
               variant="contained"
@@ -602,6 +899,19 @@ const Resumes: React.FC = () => {
             </Button>
           </Stack>
         </Paper>
+      ) : filteredResumes.length === 0 ? (
+        <Paper sx={{ p: 3, textAlign: "center" }}>
+          <Typography variant="body1" color="text.secondary" gutterBottom>
+            No resumes match the selected filter.
+          </Typography>
+          <Button
+            variant="outlined"
+            onClick={() => setChipFilter(null)}
+            sx={{ mt: 2 }}
+          >
+            Clear Filter
+          </Button>
+        </Paper>
       ) : (
         <TableContainer component={Paper}>
           <Table sx={{ minWidth: 650 }} size="small" aria-label="resumes table">
@@ -610,12 +920,12 @@ const Resumes: React.FC = () => {
                 <TableCell padding="checkbox">
                   <Checkbox
                     checked={
-                      resumes.length > 0 &&
-                      selectedResumes.size === resumes.length
+                      filteredResumes.length > 0 &&
+                      selectedResumes.size === filteredResumes.length
                     }
                     indeterminate={
                       selectedResumes.size > 0 &&
-                      selectedResumes.size < resumes.length
+                      selectedResumes.size < filteredResumes.length
                     }
                     onChange={handleSelectAll}
                   />
@@ -633,7 +943,7 @@ const Resumes: React.FC = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {resumes.map((resume) => (
+              {filteredResumes.map((resume) => (
                 <TableRow
                   key={resume._id}
                   sx={{
@@ -655,12 +965,11 @@ const Resumes: React.FC = () => {
                       : "-"}
                   </TableCell> */}
                   <TableCell align="center">
-                    {resume.aiModel && resume.aiVersion
-                      ? getModelLabel(
-                          resume.aiModel as AiProvider,
-                          resume.aiVersion,
-                        )
-                      : "gpt-4.1-mini"}
+                    <AiVersionBadge
+                      aiModel={resume.aiModel}
+                      aiVersion={resume.aiVersion}
+                      generationSource={resume.generationSource}
+                    />
                   </TableCell>
                   <TableCell align="center">
                     {resume.jobDescription ? (
@@ -727,13 +1036,23 @@ const Resumes: React.FC = () => {
                     <IconButton
                       size="small"
                       color="info"
-                      onClick={() => setCoverLetterResumeId(resume._id)}
-                      title="Generate Cover Letter"
+                      onClick={() => handleGenerateCoverLetter(resume._id)}
+                      title={
+                        resume.generationSource === "manual"
+                          ? "Cover letter not available for manual resumes"
+                          : "Generate Cover Letter"
+                      }
                       disabled={
-                        resume.status !== "completed"
+                        resume.status !== "completed" ||
+                        resume.generationSource === "manual" ||
+                        generatingCoverLetterId === resume._id
                       }
                     >
-                      <DescriptionIcon />
+                      {generatingCoverLetterId === resume._id ? (
+                        <CircularProgress size={20} color="inherit" />
+                      ) : (
+                        <DescriptionIcon />
+                      )}
                     </IconButton>
                   </TableCell>
                   <TableCell align="center">
@@ -741,8 +1060,15 @@ const Resumes: React.FC = () => {
                       size="small"
                       color="info"
                       onClick={() => setQuestionsResumeId(resume._id)}
-                      title="Answer Questions"
-                      disabled={resume.status !== "completed"}
+                      title={
+                        resume.generationSource === "manual"
+                          ? "Answer questions not available for manual resumes"
+                          : "Answer Questions"
+                      }
+                      disabled={
+                        resume.status !== "completed" ||
+                        resume.generationSource === "manual"
+                      }
                     >
                       <QuestionAnswerIcon />
                     </IconButton>
@@ -826,13 +1152,6 @@ const Resumes: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
-
-      {/* Cover Letter Dialog */}
-      <CoverLetterDialog
-        open={coverLetterResumeId !== null}
-        resumeId={coverLetterResumeId}
-        handleClose={() => setCoverLetterResumeId(null)}
-      />
 
       {/* Questions Dialog */}
       <QuestionsDialog

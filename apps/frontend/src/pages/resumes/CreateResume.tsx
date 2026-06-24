@@ -1,5 +1,6 @@
 import * as React from "react";
 import {
+  Alert,
   Button,
   Paper,
   Stack,
@@ -13,15 +14,44 @@ import {
   generateResumeStream,
   type GenerateResumeDto,
 } from "../../services/resumeService";
+import { getProfile, type UserResponse } from "../../services/userService";
 import { toast } from "react-toastify";
 import { Link, useNavigate } from "react-router";
 import AiModelSelector from "../../components/resumes/AiModelSelector";
 import {
   type AiProvider,
-  DEFAULT_AI_PROVIDER,
-  DEFAULT_AI_VERSION,
+  resolveUserDefaultAi,
 } from "../../constants/aiModels";
 import { resizableMultilineSx } from "../../constants/textFieldStyles";
+
+const getResumePromptWarning = (
+  profile: UserResponse | null,
+): string | null => {
+  if (!profile) return null;
+
+  if (!profile.instructions?.trim()) {
+    return "No resume prompt configured. Add your resume prompt in Profile settings before generating a resume.";
+  }
+
+  return null;
+};
+
+const getApiKeyWarning = (
+  profile: UserResponse | null,
+  aiModel: AiProvider,
+): string | null => {
+  if (!profile) return null;
+
+  if (aiModel === "openai" && !profile.hasOpenaiApiKey) {
+    return "No OpenAI API key configured. Add your OpenAI API key in Profile settings before generating with GPT.";
+  }
+
+  if (aiModel === "claude" && !profile.hasAnthropicApiKey) {
+    return "No Anthropic API key configured. Add your Anthropic API key in Profile settings before generating with Claude.";
+  }
+
+  return null;
+};
 
 const schema = yup
   .object({
@@ -36,12 +66,40 @@ type FormData = yup.InferType<typeof schema>;
 const CreateResume: React.FC = () => {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [aiModel, setAiModel] = React.useState<AiProvider>(DEFAULT_AI_PROVIDER);
-  const [aiVersion, setAiVersion] = React.useState(DEFAULT_AI_VERSION);
+  const [aiModel, setAiModel] = React.useState<AiProvider>("claude");
+  const [aiVersion, setAiVersion] = React.useState("claude-sonnet-4-6");
+  const [profile, setProfile] = React.useState<UserResponse | null>(null);
+  const [submitError, setSubmitError] = React.useState<string | null>(null);
 
   const [formData, setFormData] = React.useState({
     industry: "default"
   });
+
+  const apiKeyWarning = React.useMemo(
+    () => getApiKeyWarning(profile, aiModel),
+    [profile, aiModel],
+  );
+
+  const resumePromptWarning = React.useMemo(
+    () => getResumePromptWarning(profile),
+    [profile],
+  );
+
+  const isGenerateDisabled =
+    isSubmitting || !!apiKeyWarning || !!resumePromptWarning;
+
+  React.useEffect(() => {
+    getProfile()
+      .then((loadedProfile) => {
+        setProfile(loadedProfile);
+        const defaults = resolveUserDefaultAi(loadedProfile);
+        setAiModel(defaults.aiModel);
+        setAiVersion(defaults.aiVersion);
+      })
+      .catch(() => {
+        // Profile warning is optional; submit validation still runs on the server.
+      });
+  }, []);
 
   const {
     register,
@@ -59,10 +117,24 @@ const CreateResume: React.FC = () => {
   const handleAiModelChange = (model: AiProvider, version: string) => {
     setAiModel(model);
     setAiVersion(version);
+    setSubmitError(null);
   };
 
   const onSubmit = async (data: FormData) => {
     setIsSubmitting(true);
+    setSubmitError(null);
+
+    if (apiKeyWarning) {
+      setSubmitError(apiKeyWarning);
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (resumePromptWarning) {
+      setSubmitError(resumePromptWarning);
+      setIsSubmitting(false);
+      return;
+    }
 
     try {
       const payload: GenerateResumeDto = {
@@ -87,6 +159,7 @@ const CreateResume: React.FC = () => {
         err.response?.data?.message ||
         err.message ||
         "Failed to generate resume";
+      setSubmitError(errorMessage);
       toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
@@ -112,6 +185,51 @@ const CreateResume: React.FC = () => {
         be generated in the background using your profile prompt and selected AI
         model.
       </Typography>
+
+      {resumePromptWarning && (
+        <Alert
+          severity="warning"
+          sx={{ mb: 2 }}
+          action={
+            <Button color="inherit" size="small" component={Link} to="/settings">
+              Go to Settings
+            </Button>
+          }
+        >
+          {resumePromptWarning}
+        </Alert>
+      )}
+
+      {apiKeyWarning && (
+        <Alert
+          severity="warning"
+          sx={{ mb: 2 }}
+          action={
+            <Button color="inherit" size="small" component={Link} to="/settings">
+              Go to Settings
+            </Button>
+          }
+        >
+          {apiKeyWarning}
+        </Alert>
+      )}
+
+      {submitError && (
+        <Alert
+          severity="error"
+          sx={{ mb: 2 }}
+          onClose={() => setSubmitError(null)}
+          action={
+            submitError.toLowerCase().includes("profile") ? (
+              <Button color="inherit" size="small" component={Link} to="/settings">
+                Go to Settings
+              </Button>
+            ) : undefined
+          }
+        >
+          {submitError}
+        </Alert>
+      )}
 
       <form onSubmit={handleSubmit(onSubmit)}>
         <Stack spacing={3}>
@@ -160,7 +278,7 @@ const CreateResume: React.FC = () => {
             type="submit"
             variant="contained"
             size="large"
-            disabled={isSubmitting}
+            disabled={isGenerateDisabled}
             fullWidth
           >
             {isSubmitting ? "Generating Resume..." : "Generate Resume"}

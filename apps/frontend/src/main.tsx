@@ -1,4 +1,4 @@
-import { createTheme, CssBaseline, ThemeProvider } from "@mui/material";
+import * as React from "react";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { createBrowserRouter, Navigate, RouterProvider } from "react-router";
@@ -8,6 +8,7 @@ import "react-toastify/dist/ReactToastify.css";
 // import Systems from "./pages/systems";
 import Layout from "./components/common/Layout";
 import AuthProvider from "./components/common/AuthContext";
+import ThemeModeProvider, { useThemeMode } from "./components/common/ThemeContext";
 import AdminLayout from "./components/common/AdminLayout";
 import NonPrivateLayout from "./components/common/NonPrivateLayout";
 import Login from "./pages/login";
@@ -58,7 +59,7 @@ const router = createBrowserRouter([
           { path: "resumes", element: <Resumes /> }, // '/resumes'
           { path: "resumes/new", element: <CreateResume /> }, // '/resumes/new'
           { path: "fromjson", element: <FromJson /> }, // '/fromjson'
-          { path: "profile", element: <Profile /> }, // '/profile'
+          { path: "settings", element: <Profile /> }, // '/settings'
         ],
       },
     ],
@@ -78,51 +79,35 @@ const router = createBrowserRouter([
   { path: "*", element: <Navigate to="/resumes" replace /> },
 ]);
 
+const AppContent: React.FC = () => {
+  const { mode } = useThemeMode();
+
+  return (
+    <>
+      <RouterProvider router={router} />
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme={mode}
+      />
+    </>
+  );
+};
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <AuthProvider>
       <RaceProvider>
-        <ThemeProvider
-          theme={createTheme({
-            palette: {
-              primary: {
-                main: "#ffba7f",
-                light: "#ffd4b3",
-                dark: "#cc945f",
-                contrastText: "#000000",
-              },
-              secondary: {
-                main: "#545454",
-                light: "#737373",
-                dark: "#363636",
-                contrastText: "#ffba7f",
-              },
-            },
-            components: {
-              MuiButton: {
-                styleOverrides: { root: { textTransform: "none" } },
-              },
-              MuiTextField: {
-                defaultProps: { slotProps: { inputLabel: { shrink: true } } },
-              },
-            },
-          })}
-        >
-          <CssBaseline />
-          <RouterProvider router={router} />
-          <ToastContainer
-            position="top-right"
-            autoClose={3000}
-            hideProgressBar={false}
-            newestOnTop={false}
-            closeOnClick
-            rtl={false}
-            pauseOnFocusLoss
-            draggable
-            pauseOnHover
-            theme="light"
-          />
-        </ThemeProvider>
+        <ThemeModeProvider>
+          <AppContent />
+        </ThemeModeProvider>
       </RaceProvider>
     </AuthProvider>
   </StrictMode>
