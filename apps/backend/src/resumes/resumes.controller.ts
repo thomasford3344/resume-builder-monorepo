@@ -38,8 +38,6 @@ import {
   answerQuestionsSchema,
 } from './dto/answer-questions.dto';
 import { type FromJsonDto, fromJsonSchema } from './dto/from-json.dto';
-import { readFile } from 'fs/promises';
-import { existsSync } from 'fs';
 
 @Controller('resumes')
 export class ResumesController {
@@ -230,12 +228,10 @@ export class ResumesController {
       throw new NotFoundException('Job description not found for this resume');
     }
 
-    if (!resume.jsonFilePath || !existsSync(resume.jsonFilePath)) {
-      throw new NotFoundException('Resume JSON file not found');
-    }
-
-    const jsonContent = await readFile(resume.jsonFilePath, 'utf-8');
-    const resumeJson = JSON.parse(jsonContent);
+    const resumeJson = await this.resumesService.getResumeJson(
+      answerQuestionsDto.resumeId,
+      req.user._id,
+    );
 
     // Parse questions from text and answer them in a single AI call
     const qaPairs = await this.resumesService.parseAndAnswerQuestions(

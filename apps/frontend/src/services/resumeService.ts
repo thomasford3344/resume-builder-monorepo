@@ -22,7 +22,7 @@ export interface ResumeResponse {
   companyName: string;
   roleType: string;
   jobDescription: string;
-  jsonFilePath?: string;
+  resumeJson?: Record<string, unknown>;
   conversationId?: string;
   status?: 'in_progress' | 'completed' | 'failed';
   aiModel?: 'openai' | 'claude';
