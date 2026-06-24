@@ -26,6 +26,7 @@ import {
   MenuItem,
   ListItemIcon,
   ListItemText,
+  Divider,
 } from "@mui/material";
 import {
   Delete as DeleteIcon,
@@ -39,6 +40,8 @@ import {
   ContentCopy as ContentCopyIcon,
   Person as PersonIcon,
   Logout as LogoutIcon,
+  LightMode as LightModeIcon,
+  DarkMode as DarkModeIcon,
 } from "@mui/icons-material";
 import { OpenAI, Claude } from "@lobehub/icons";
 import { Link, useNavigate } from "react-router";
@@ -57,6 +60,7 @@ import CoverLetterDialog from "../../components/resumes/CoverLetterDialog";
 import QuestionsDialog from "../../components/resumes/QuestionsDialog";
 import AiVersionBadge from "../../components/resumes/AiVersionBadge";
 import { useAuth } from "../../components/common/AuthContext";
+import { useThemeMode } from "../../components/common/ThemeContext";
 import { getProfile } from "../../services/userService";
 import { socket } from "./socket";
 
@@ -193,6 +197,7 @@ const Resumes: React.FC = () => {
 
   const navigate = useNavigate();
   const { logout } = useAuth();
+  const { mode, setMode } = useThemeMode();
 
   const avatarInitial = userEmail
     ? userEmail.charAt(0).toUpperCase()
@@ -218,6 +223,11 @@ const Resumes: React.FC = () => {
   const handleLogoutClick = () => {
     handleAvatarMenuClose();
     setLogoutDialogOpen(true);
+  };
+
+  const handleThemeChange = (nextMode: "light" | "dark") => {
+    setMode(nextMode);
+    handleAvatarMenuClose();
   };
 
   React.useEffect(() => {
@@ -655,6 +665,23 @@ const Resumes: React.FC = () => {
               </ListItemIcon>
               <ListItemText>Profile</ListItemText>
             </MenuItem>
+            <Divider />
+            {mode === "dark" ? (
+              <MenuItem onClick={() => handleThemeChange("light")}>
+                <ListItemIcon>
+                  <LightModeIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText>Light</ListItemText>
+              </MenuItem>
+            ) : (
+              <MenuItem onClick={() => handleThemeChange("dark")}>
+                <ListItemIcon>
+                  <DarkModeIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText>Dark</ListItemText>
+              </MenuItem>
+            )}
+            <Divider />
             <MenuItem onClick={handleLogoutClick}>
               <ListItemIcon>
                 <LogoutIcon fontSize="small" />

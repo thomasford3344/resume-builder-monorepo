@@ -16,7 +16,8 @@ const NonPrivateLayout: React.FC = () => {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        bgcolor: "#e0e0e0",
+        bgcolor: (theme) => theme.palette.background.default,
+        color: (theme) => theme.palette.text.primary,
         p: 2,
       }}
     >
