@@ -7,6 +7,10 @@ import {
   resolveApiModelId,
 } from '../ai/ai-models';
 import { RESUME_JSON_SCHEMA } from '../ai/resume-json-schema';
+import {
+  DEFAULT_COVER_LETTER_PROMPT,
+  DEFAULT_QUESTIONS_PROMPT,
+} from '../ai/default-prompts';
 
 export interface UserApiKeys {
   openai?: string | null;
@@ -63,32 +67,70 @@ export class OpenAIService {
     }
 
     const fullInstructions = this.cleanText(userInstructions);
-    const conversationId = `conv_${Date.now()}_${Math.random().toString(36).substring(7)}`;
     const cleanedJobDescription = this.cleanText(jobDescription);
     const apiModelId = resolveApiModelId(aiProvider, aiVersion);
 
-    let resumeJson: ResumeData;
-
     if (aiProvider === 'claude') {
-      resumeJson = await this.generateResumeWithClaude(
+      const { resumeJson, conversationId } = await this.generateResumeWithClaude(
         cleanedJobDescription,
         fullInstructions,
         apiModelId,
         apiKeys,
       );
-    } else {
-      resumeJson = await this.generateResumeWithOpenAI(
+
+      return {
+        resumeJson,
+        threadId: conversationId,
+      };
+    }
+
+    const { resumeJson, responseId } = await this.generateResumeWithOpenAI(
+      cleanedJobDescription,
+      fullInstructions,
+      apiModelId,
+      apiKeys,
+    );
+
+    return {
+      resumeJson,
+      threadId: responseId,
+    };
+  }
+
+  async generateCoverLetter(
+    jobDescription: string,
+    resumeJson: Record<string, unknown>,
+    conversationId: string | undefined,
+    aiProvider: AiProvider = 'openai',
+    aiVersion: string = 'gpt-4.1-mini',
+    apiKeys?: UserApiKeys,
+    customPrompt?: string,
+  ): Promise<string> {
+    const cleanedJobDescription = this.cleanText(jobDescription);
+    const compactResumeJson = JSON.stringify(resumeJson);
+    const coverLetterInstructions = this.cleanText(
+      customPrompt?.trim() || DEFAULT_COVER_LETTER_PROMPT,
+    );
+    const apiModelId = resolveApiModelId(aiProvider, aiVersion);
+
+    if (aiProvider === 'claude') {
+      return this.generateCoverLetterWithClaude(
         cleanedJobDescription,
-        fullInstructions,
+        compactResumeJson,
+        coverLetterInstructions,
         apiModelId,
         apiKeys,
       );
     }
 
-    return {
-      resumeJson,
-      threadId: conversationId,
-    };
+    return this.generateCoverLetterWithOpenAI(
+      conversationId,
+      cleanedJobDescription,
+      compactResumeJson,
+      coverLetterInstructions,
+      apiModelId,
+      apiKeys,
+    );
   }
 
   private async generateResumeWithOpenAI(
@@ -96,7 +138,7 @@ export class OpenAIService {
     instructions: string,
     model: string,
     apiKeys?: UserApiKeys,
-  ): Promise<ResumeData> {
+  ): Promise<{ resumeJson: ResumeData; responseId: string }> {
     const client = this.getOpenAIClient(apiKeys);
     const response = await client.responses.create({
       model,
@@ -112,12 +154,19 @@ export class OpenAIService {
       },
     });
 
+    if (!response.id) {
+      throw new Error('No response id received from OpenAI');
+    }
+
     if (!response.output_text) {
       throw new Error('No output text received from OpenAI');
     }
 
     try {
-      return JSON.parse(response.output_text);
+      return {
+        resumeJson: JSON.parse(response.output_text),
+        responseId: response.id,
+      };
     } catch (error) {
       throw new Error(
         `Failed to parse JSON from OpenAI response: ${error.message}. Response: ${response.output_text.substring(0, 200)}`,
@@ -130,7 +179,7 @@ export class OpenAIService {
     instructions: string,
     model: string,
     apiKeys?: UserApiKeys,
-  ): Promise<ResumeData> {
+  ): Promise<{ resumeJson: ResumeData; conversationId: string }> {
     const client = this.getAnthropicClient(apiKeys);
     const schemaPrompt = `You must respond with valid JSON only, matching this schema exactly:\n${JSON.stringify(RESUME_JSON_SCHEMA)}`;
 
@@ -146,6 +195,10 @@ export class OpenAIService {
       ],
     });
 
+    if (!response.id) {
+      throw new Error('No conversation id received from Claude');
+    }
+
     const textBlock = response.content.find((block) => block.type === 'text');
     if (!textBlock || textBlock.type !== 'text') {
       throw new Error('No text output received from Claude');
@@ -157,12 +210,73 @@ export class OpenAIService {
       : outputText;
 
     try {
-      return JSON.parse(jsonText);
+      return {
+        resumeJson: JSON.parse(jsonText),
+        conversationId: response.id,
+      };
     } catch (error) {
       throw new Error(
         `Failed to parse JSON from Claude response: ${error.message}. Response: ${outputText.substring(0, 200)}`,
       );
     }
+  }
+
+  private async generateCoverLetterWithOpenAI(
+    conversationId: string | undefined,
+    jobDescription: string,
+    resumeJson: string,
+    instructions: string,
+    model: string,
+    apiKeys?: UserApiKeys,
+  ): Promise<string> {
+    const client = this.getOpenAIClient(apiKeys);
+    const request: OpenAI.Responses.ResponseCreateParams = {
+      model,
+      instructions,
+      input: conversationId
+        ? 'Generate the cover letter now.'
+        : `Job Description: ${jobDescription}\n\nResume JSON: ${resumeJson}\n\nGenerate the cover letter now.`,
+    };
+
+    if (conversationId) {
+      request.previous_response_id = conversationId;
+    }
+
+    const response = await client.responses.create(request);
+
+    if (!response.output_text?.trim()) {
+      throw new Error('No cover letter text received from OpenAI');
+    }
+
+    return response.output_text.trim();
+  }
+
+  private async generateCoverLetterWithClaude(
+    jobDescription: string,
+    resumeJson: string,
+    instructions: string,
+    model: string,
+    apiKeys?: UserApiKeys,
+  ): Promise<string> {
+    const client = this.getAnthropicClient(apiKeys);
+    const response = await client.messages.create({
+      model,
+      max_tokens: 1800,
+      system: instructions,
+      messages: [
+        {
+          role: 'user',
+          content: `Job Description: ${jobDescription}\n\nResume JSON: ${resumeJson}\n\nGenerate the cover letter now.`,
+        },
+      ],
+    });
+
+    const textBlock = response.content.find((block) => block.type === 'text');
+    if (!textBlock || textBlock.type !== 'text' || !textBlock.text.trim()) {
+      throw new Error('No cover letter text received from Claude');
+    }
+
+    return textBlock.text.trim();
   }
 
   async parseAndAnswerQuestions(
@@ -174,17 +288,9 @@ export class OpenAIService {
     aiVersion: string = 'gpt-4.1-mini',
     apiKeys?: UserApiKeys,
   ): Promise<Array<{ question: string; answer: string }>> {
-    const instructions =
-      customPrompt ||
-      `
-      You are an assistant who answers questions while job applying on behalf of me.  
-      The job description and resume JSON content will be provided.
-
-      Answers must be specific and always positive.  
-      For any "describe" type question, the answer should be 2-4 sentences.
-
-      The goal is to make HR want to contact me for next steps.
-    `;
+    const instructions = this.cleanText(
+      customPrompt?.trim() || DEFAULT_QUESTIONS_PROMPT,
+    );
 
     const cleanedJobDescription = this.cleanText(jobDescription);
     const cleanedInstructions = this.cleanText(instructions);

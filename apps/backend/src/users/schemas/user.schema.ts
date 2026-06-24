@@ -30,6 +30,9 @@ export class User {
   @Prop({ type: String, required: false })
   questionsPrompt?: string;
 
+  @Prop({ type: String, required: false })
+  coverLetterPrompt?: string;
+
   @Prop({ type: String, required: false, select: false })
   encryptedOpenaiApiKey?: string;
 

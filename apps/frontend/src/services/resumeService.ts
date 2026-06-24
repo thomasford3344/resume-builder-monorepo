@@ -257,6 +257,13 @@ export const downloadCoverLetter = async (id: string) => {
   return res; // Return full response to access headers
 };
 
+export const generateCoverLetter = async (id: string) => {
+  const res = await api.post(`/api/resumes/${id}/generate-cover-letter`, {}, {
+    responseType: "blob",
+  });
+  return res;
+};
+
 export interface FromJsonDto {
   companyName: string;
   roleType: string;

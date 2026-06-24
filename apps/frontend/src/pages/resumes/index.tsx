@@ -51,12 +51,12 @@ import {
   bulkDeleteResumes,
   downloadResume,
   downloadResumeJSON,
+  generateCoverLetter,
   type ResumeResponse,
   type FilterResumeParams,
 } from "../../services/resumeService";
 import { toast } from "react-toastify";
 import moment from "moment";
-import CoverLetterDialog from "../../components/resumes/CoverLetterDialog";
 import QuestionsDialog from "../../components/resumes/QuestionsDialog";
 import AiVersionBadge from "../../components/resumes/AiVersionBadge";
 import { useAuth } from "../../components/common/AuthContext";
@@ -176,7 +176,7 @@ const Resumes: React.FC = () => {
     };
   });
   const [chipFilter, setChipFilter] = React.useState<ChipFilter | null>(null);
-  const [coverLetterResumeId, setCoverLetterResumeId] = React.useState<
+  const [generatingCoverLetterId, setGeneratingCoverLetterId] = React.useState<
     string | null
   >(null);
   const [questionsResumeId, setQuestionsResumeId] = React.useState<
@@ -497,6 +497,63 @@ const Resumes: React.FC = () => {
     }
   };
 
+  const handleGenerateCoverLetter = async (id: string) => {
+    setGeneratingCoverLetterId(id);
+    try {
+      const response = await generateCoverLetter(id);
+      const pdfBlob = response.data;
+
+      const contentDisposition = response.headers["content-disposition"];
+      let filename = "Cover_Letter.pdf";
+
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(
+          /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/,
+        );
+        if (filenameMatch?.[1]) {
+          filename = filenameMatch[1].replace(/['"]/g, "");
+        }
+      }
+
+      const url = window.URL.createObjectURL(pdfBlob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast.success("Cover letter generated and downloaded successfully!");
+    } catch (error: unknown) {
+      const err = error as {
+        response?: { data?: Blob };
+        message?: string;
+      };
+      let message = "Failed to generate cover letter";
+
+      if (err.response?.data instanceof Blob) {
+        try {
+          const text = await err.response.data.text();
+          const parsed = JSON.parse(text) as { message?: string | string[] };
+          if (parsed.message) {
+            message = Array.isArray(parsed.message)
+              ? parsed.message.join(", ")
+              : parsed.message;
+          }
+        } catch {
+          // use default message
+        }
+      } else if (err.message) {
+        message = err.message;
+      }
+
+      toast.error(message);
+    } finally {
+      setGeneratingCoverLetterId(null);
+    }
+  };
+
   const handleSelectResume = (id: string) => {
     setSelectedResumes((prev) => {
       const newSet = new Set(prev);
@@ -612,7 +669,7 @@ const Resumes: React.FC = () => {
             to="/resumes/new"
             startIcon={<AddIcon />}
           >
-            Create Resume
+            Generate Resume
           </Button>
           <Button
             variant="contained"
@@ -830,7 +887,7 @@ const Resumes: React.FC = () => {
               to="/resumes/new"
               startIcon={<AddIcon />}
             >
-              Create Resume
+              Generate Resume
             </Button>
             <Button
               variant="contained"
@@ -979,13 +1036,23 @@ const Resumes: React.FC = () => {
                     <IconButton
                       size="small"
                       color="info"
-                      onClick={() => setCoverLetterResumeId(resume._id)}
-                      title="Generate Cover Letter"
+                      onClick={() => handleGenerateCoverLetter(resume._id)}
+                      title={
+                        resume.generationSource === "manual"
+                          ? "Cover letter not available for manual resumes"
+                          : "Generate Cover Letter"
+                      }
                       disabled={
-                        resume.status !== "completed"
+                        resume.status !== "completed" ||
+                        resume.generationSource === "manual" ||
+                        generatingCoverLetterId === resume._id
                       }
                     >
-                      <DescriptionIcon />
+                      {generatingCoverLetterId === resume._id ? (
+                        <CircularProgress size={20} color="inherit" />
+                      ) : (
+                        <DescriptionIcon />
+                      )}
                     </IconButton>
                   </TableCell>
                   <TableCell align="center">
@@ -993,8 +1060,15 @@ const Resumes: React.FC = () => {
                       size="small"
                       color="info"
                       onClick={() => setQuestionsResumeId(resume._id)}
-                      title="Answer Questions"
-                      disabled={resume.status !== "completed"}
+                      title={
+                        resume.generationSource === "manual"
+                          ? "Answer questions not available for manual resumes"
+                          : "Answer Questions"
+                      }
+                      disabled={
+                        resume.status !== "completed" ||
+                        resume.generationSource === "manual"
+                      }
                     >
                       <QuestionAnswerIcon />
                     </IconButton>
@@ -1078,13 +1152,6 @@ const Resumes: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
-
-      {/* Cover Letter Dialog */}
-      <CoverLetterDialog
-        open={coverLetterResumeId !== null}
-        resumeId={coverLetterResumeId}
-        handleClose={() => setCoverLetterResumeId(null)}
-      />
 
       {/* Questions Dialog */}
       <QuestionsDialog

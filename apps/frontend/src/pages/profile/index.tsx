@@ -30,7 +30,12 @@ import {
   type UserResponse,
   type UpdateProfileDto,
 } from "../../services/userService";
-import { resizableMultilineSx } from "../../constants/textFieldStyles";
+import { resizableMultilineSx, PROMPT_FIELD_ROWS } from "../../constants/textFieldStyles";
+import {
+  CUSTOM_PROMPT_HELPER_TEXT,
+  DEFAULT_COVER_LETTER_PROMPT,
+  DEFAULT_QUESTIONS_PROMPT,
+} from "../../constants/aiPrompts";
 import { alpha } from "@mui/material/styles";
 
 const savedApiKeyFieldSx = {
@@ -75,6 +80,7 @@ const Profile: React.FC = () => {
     name: "",
     template: "",
     instructions: "",
+    coverLetterPrompt: "",
     questionsPrompt: "",
     openaiApiKey: "",
     anthropicApiKey: "",
@@ -113,6 +119,7 @@ const Profile: React.FC = () => {
         name: profile.name || "",
         template: profile.template || "template1",
         instructions: profile.instructions || "",
+        coverLetterPrompt: profile.coverLetterPrompt || "",
         questionsPrompt: profile.questionsPrompt || "",
         openaiApiKey: "",
         anthropicApiKey: "",
@@ -254,6 +261,7 @@ const Profile: React.FC = () => {
         name: formData.name,
         template: formData.template,
         instructions: formData.instructions,
+        coverLetterPrompt: formData.coverLetterPrompt,
         questionsPrompt: formData.questionsPrompt,
         ...(isOpenaiKeyChanged && formData.openaiApiKey && {
           openaiApiKey: formData.openaiApiKey,
@@ -287,6 +295,7 @@ const Profile: React.FC = () => {
       formData.name !== (user.name || "") ||
       formData.template !== (user.template || "") ||
       formData.instructions !== (user.instructions || "") ||
+      formData.coverLetterPrompt !== (user.coverLetterPrompt || "") ||
       formData.questionsPrompt !== (user.questionsPrompt || "") ||
       isOpenaiKeyChanged ||
       isAnthropicKeyChanged
@@ -369,15 +378,34 @@ const Profile: React.FC = () => {
             </Button>
           </Stack>
 
+          <Divider sx={{ my: 2 }} />
+
+          <Typography variant="h6" gutterBottom>
+            Prompts
+          </Typography>
+
           <TextField
             label="Resume Prompt"
             value={formData.instructions}
             onChange={handleInputChange("instructions")}
             fullWidth
             multiline
-            rows={4}
+            rows={PROMPT_FIELD_ROWS}
             variant="outlined"
             helperText="This prompt is used when generating resumes"
+            sx={resizableMultilineSx}
+          />
+
+          <TextField
+            label="Cover Letter Prompt"
+            value={formData.coverLetterPrompt}
+            onChange={handleInputChange("coverLetterPrompt")}
+            fullWidth
+            multiline
+            rows={PROMPT_FIELD_ROWS}
+            variant="outlined"
+            placeholder={DEFAULT_COVER_LETTER_PROMPT}
+            helperText={CUSTOM_PROMPT_HELPER_TEXT}
             sx={resizableMultilineSx}
           />
 
@@ -387,9 +415,10 @@ const Profile: React.FC = () => {
             onChange={handleInputChange("questionsPrompt")}
             fullWidth
             multiline
-            rows={4}
+            rows={PROMPT_FIELD_ROWS}
             variant="outlined"
-            helperText="This prompt is used when generating answers to questions"
+            placeholder={DEFAULT_QUESTIONS_PROMPT}
+            helperText={CUSTOM_PROMPT_HELPER_TEXT}
             sx={resizableMultilineSx}
           />
 

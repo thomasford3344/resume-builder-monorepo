@@ -148,6 +148,9 @@ export class UsersService {
     if (updateUserDto.questionsPrompt !== undefined) {
       user.questionsPrompt = updateUserDto.questionsPrompt;
     }
+    if (updateUserDto.coverLetterPrompt !== undefined) {
+      user.coverLetterPrompt = updateUserDto.coverLetterPrompt;
+    }
 
     this.applyApiKeyUpdates(user, updateUserDto);
 
@@ -200,6 +203,9 @@ export class UsersService {
     }
     if (updateUserDto.questionsPrompt !== undefined) {
       user.questionsPrompt = updateUserDto.questionsPrompt;
+    }
+    if (updateUserDto.coverLetterPrompt !== undefined) {
+      user.coverLetterPrompt = updateUserDto.coverLetterPrompt;
     }
 
     this.applyApiKeyUpdates(user, updateUserDto);

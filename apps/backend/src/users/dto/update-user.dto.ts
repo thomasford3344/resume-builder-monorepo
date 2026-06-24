@@ -6,6 +6,7 @@ export class UpdateUserDto {
   template?: 'template1';
   instructions?: string;
   questionsPrompt?: string;
+  coverLetterPrompt?: string;
   openaiApiKey?: string;
   anthropicApiKey?: string;
   clearOpenaiApiKey?: boolean;

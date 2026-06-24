@@ -4,3 +4,5 @@ export const resizableMultilineSx = {
     overflow: "auto !important",
   },
 };
+
+export const PROMPT_FIELD_ROWS = 8;
