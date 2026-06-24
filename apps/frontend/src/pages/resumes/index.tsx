@@ -592,7 +592,7 @@ const Resumes: React.FC = () => {
             <Typography variant="body2" color="text.secondary">
               {loading
                 ? "Loading resumes..."
-                : `${resumeCounts.total} generated resume${resumeCounts.total !== 1 ? "s" : ""}`}
+                : `${resumeCounts.total} resume${resumeCounts.total !== 1 ? "s" : ""}`}
             </Typography>
             {!loading && resumeCounts.total > 0 && (
               <>

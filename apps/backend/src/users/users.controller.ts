@@ -15,6 +15,7 @@ import { AdminGuard } from 'src/auth/admin.guard';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { RevealApiKeysDto } from './dto/reveal-api-keys.dto';
 
 @Controller('users')
 export class UsersController {
@@ -30,6 +31,12 @@ export class UsersController {
   @Put('profile')
   async updateProfile(@Request() req, @Body() updateUserDto: UpdateUserDto) {
     return this.usersService.updateProfile(req.user._id, updateUserDto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('profile/reveal-api-keys')
+  async revealApiKeys(@Request() req, @Body() body: RevealApiKeysDto) {
+    return this.usersService.revealApiKeys(req.user._id, body.currentPassword);
   }
 
   @UseGuards(JwtAuthGuard, AdminGuard)

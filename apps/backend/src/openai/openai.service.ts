@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
 import { ResumeData } from 'src/resumes/templates';
@@ -9,30 +8,47 @@ import {
 } from '../ai/ai-models';
 import { RESUME_JSON_SCHEMA } from '../ai/resume-json-schema';
 
+export interface UserApiKeys {
+  openai?: string | null;
+  anthropic?: string | null;
+}
+
 @Injectable()
 export class OpenAIService {
-  private client: OpenAI;
-  private anthropicClient: Anthropic | null = null;
-
-  constructor(private configService: ConfigService) {
-    const apiKey = this.configService.get<string>('openai.apiKey');
-    if (!apiKey) {
-      throw new Error('OpenAI API key is not configured');
-    }
-    this.client = new OpenAI({
-      apiKey: apiKey,
-    });
-
-    const anthropicApiKey = this.configService.get<string>('anthropic.apiKey');
-    if (anthropicApiKey) {
-      this.anthropicClient = new Anthropic({
-        apiKey: anthropicApiKey,
-      });
-    }
-  }
-
   private cleanText(text: string): string {
     return text.replace(/\s+/g, ' ').trim();
+  }
+
+  private resolveOpenaiKey(apiKeys?: UserApiKeys): string {
+    const key = apiKeys?.openai?.trim();
+    if (!key) {
+      throw new Error(
+        'No OpenAI API key configured. Add your OpenAI API key in Profile settings.',
+      );
+    }
+    return key;
+  }
+
+  private resolveAnthropicKey(apiKeys?: UserApiKeys): string {
+    const key = apiKeys?.anthropic?.trim();
+    if (!key) {
+      throw new Error(
+        'No Anthropic API key configured. Add your Anthropic API key in Profile settings.',
+      );
+    }
+    return key;
+  }
+
+  private getOpenAIClient(apiKeys?: UserApiKeys): OpenAI {
+    return new OpenAI({
+      apiKey: this.resolveOpenaiKey(apiKeys),
+    });
+  }
+
+  private getAnthropicClient(apiKeys?: UserApiKeys): Anthropic {
+    return new Anthropic({
+      apiKey: this.resolveAnthropicKey(apiKeys),
+    });
   }
 
   async generateResume(
@@ -40,6 +56,7 @@ export class OpenAIService {
     userInstructions: string,
     aiProvider: AiProvider = 'openai',
     aiVersion: string = 'gpt-4.1-mini',
+    apiKeys?: UserApiKeys,
   ): Promise<{ resumeJson: ResumeData; threadId: string }> {
     if (!userInstructions || !userInstructions.trim()) {
       throw new Error('User instructions are required and cannot be empty');
@@ -57,12 +74,14 @@ export class OpenAIService {
         cleanedJobDescription,
         fullInstructions,
         apiModelId,
+        apiKeys,
       );
     } else {
       resumeJson = await this.generateResumeWithOpenAI(
         cleanedJobDescription,
         fullInstructions,
         apiModelId,
+        apiKeys,
       );
     }
 
@@ -76,8 +95,10 @@ export class OpenAIService {
     jobDescription: string,
     instructions: string,
     model: string,
+    apiKeys?: UserApiKeys,
   ): Promise<ResumeData> {
-    const response = await this.client.responses.create({
+    const client = this.getOpenAIClient(apiKeys);
+    const response = await client.responses.create({
       model,
       instructions,
       input: jobDescription,
@@ -108,16 +129,12 @@ export class OpenAIService {
     jobDescription: string,
     instructions: string,
     model: string,
+    apiKeys?: UserApiKeys,
   ): Promise<ResumeData> {
-    if (!this.anthropicClient) {
-      throw new Error(
-        'Anthropic API key is not configured. Set ANTHROPIC_API_KEY in environment.',
-      );
-    }
-
+    const client = this.getAnthropicClient(apiKeys);
     const schemaPrompt = `You must respond with valid JSON only, matching this schema exactly:\n${JSON.stringify(RESUME_JSON_SCHEMA)}`;
 
-    const response = await this.anthropicClient.messages.create({
+    const response = await client.messages.create({
       model,
       max_tokens: 16384,
       system: `${instructions}\n\n${schemaPrompt}`,
@@ -155,6 +172,7 @@ export class OpenAIService {
     customPrompt?: string,
     aiProvider: AiProvider = 'openai',
     aiVersion: string = 'gpt-4.1-mini',
+    apiKeys?: UserApiKeys,
   ): Promise<Array<{ question: string; answer: string }>> {
     const instructions =
       customPrompt ||
@@ -186,6 +204,7 @@ export class OpenAIService {
         cleanedQuestionsText,
         fullInstructions,
         apiModelId,
+        apiKeys,
       );
     }
 
@@ -193,6 +212,7 @@ export class OpenAIService {
       cleanedQuestionsText,
       fullInstructions,
       apiModelId,
+      apiKeys,
     );
   }
 
@@ -200,8 +220,10 @@ export class OpenAIService {
     questionsText: string,
     instructions: string,
     model: string,
+    apiKeys?: UserApiKeys,
   ): Promise<Array<{ question: string; answer: string }>> {
-    const response = await this.client.responses.create({
+    const client = this.getOpenAIClient(apiKeys);
+    const response = await client.responses.create({
       model,
       instructions,
       input: questionsText,
@@ -251,17 +273,13 @@ export class OpenAIService {
     questionsText: string,
     instructions: string,
     model: string,
+    apiKeys?: UserApiKeys,
   ): Promise<Array<{ question: string; answer: string }>> {
-    if (!this.anthropicClient) {
-      throw new Error(
-        'Anthropic API key is not configured. Set ANTHROPIC_API_KEY in environment.',
-      );
-    }
-
+    const client = this.getAnthropicClient(apiKeys);
     const schemaPrompt =
       'Respond with valid JSON only in this format: {"questions_and_answers": [{"question": "...", "answer": "..."}]}';
 
-    const response = await this.anthropicClient.messages.create({
+    const response = await client.messages.create({
       model,
       max_tokens: 8192,
       system: `${instructions}\n\n${schemaPrompt}`,
