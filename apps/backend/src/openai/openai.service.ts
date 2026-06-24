@@ -6,7 +6,8 @@ import {
   type AiProvider,
   resolveApiModelId,
 } from '../ai/ai-models';
-import { RESUME_JSON_SCHEMA } from '../ai/resume-json-schema';
+import { buildResumeJsonSchema } from '../ai/resume-json-schema';
+import type { ResumeSettings } from '../ai/resume-settings';
 import {
   DEFAULT_COVER_LETTER_PROMPT,
   DEFAULT_QUESTIONS_PROMPT,
@@ -61,6 +62,7 @@ export class OpenAIService {
     aiProvider: AiProvider = 'openai',
     aiVersion: string = 'gpt-4.1-mini',
     apiKeys?: UserApiKeys,
+    resumeSettings?: Partial<ResumeSettings>,
   ): Promise<{ resumeJson: ResumeData; threadId: string }> {
     if (!userInstructions || !userInstructions.trim()) {
       throw new Error('User instructions are required and cannot be empty');
@@ -69,6 +71,7 @@ export class OpenAIService {
     const fullInstructions = this.cleanText(userInstructions);
     const cleanedJobDescription = this.cleanText(jobDescription);
     const apiModelId = resolveApiModelId(aiProvider, aiVersion);
+    const resumeJsonSchema = buildResumeJsonSchema(resumeSettings);
 
     if (aiProvider === 'claude') {
       const { resumeJson, conversationId } = await this.generateResumeWithClaude(
@@ -76,6 +79,7 @@ export class OpenAIService {
         fullInstructions,
         apiModelId,
         apiKeys,
+        resumeJsonSchema,
       );
 
       return {
@@ -89,6 +93,7 @@ export class OpenAIService {
       fullInstructions,
       apiModelId,
       apiKeys,
+      resumeJsonSchema,
     );
 
     return {
@@ -138,6 +143,7 @@ export class OpenAIService {
     instructions: string,
     model: string,
     apiKeys?: UserApiKeys,
+    resumeJsonSchema = buildResumeJsonSchema(),
   ): Promise<{ resumeJson: ResumeData; responseId: string }> {
     const client = this.getOpenAIClient(apiKeys);
     const response = await client.responses.create({
@@ -149,7 +155,7 @@ export class OpenAIService {
           type: 'json_schema',
           name: 'resume',
           strict: true,
-          schema: RESUME_JSON_SCHEMA,
+          schema: resumeJsonSchema,
         },
       },
     });
@@ -179,9 +185,10 @@ export class OpenAIService {
     instructions: string,
     model: string,
     apiKeys?: UserApiKeys,
+    resumeJsonSchema = buildResumeJsonSchema(),
   ): Promise<{ resumeJson: ResumeData; conversationId: string }> {
     const client = this.getAnthropicClient(apiKeys);
-    const schemaPrompt = `You must respond with valid JSON only, matching this schema exactly:\n${JSON.stringify(RESUME_JSON_SCHEMA)}`;
+    const schemaPrompt = `You must respond with valid JSON only, matching this schema exactly:\n${JSON.stringify(resumeJsonSchema)}`;
 
     const response = await client.messages.create({
       model,

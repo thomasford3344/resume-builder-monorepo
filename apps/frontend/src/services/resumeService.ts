@@ -1,5 +1,6 @@
 // src/services/resumeService.ts
 import ApiClient from "./apiClient";
+import { fetchBlobDownload, fetchBlobPost } from "./blobDownload";
 
 export interface CreateResumeDto {
   companyName: string;
@@ -37,10 +38,7 @@ export interface ResumeResponse {
 const api = ApiClient.getInstance();
 
 export const createResume = async (data: CreateResumeDto) => {
-  const res = await api.post("/api/resumes", data, {
-    responseType: "blob",
-  });
-  return res; // Return full response to access headers
+  return fetchBlobPost("/api/resumes", data);
 };
 
 export interface GenerateResumeResponse {
@@ -237,31 +235,19 @@ export const bulkDeleteResumes = async (data: BulkDeleteResumeDto) => {
 };
 
 export const downloadResume = async (id: string) => {
-  const res = await api.get(`/api/resumes/${id}/download`, {
-    responseType: "blob",
-  });
-  return res; // Return full response to access headers
+  return fetchBlobDownload(`/api/resumes/${id}/download`);
 };
 
 export const downloadResumeJSON = async (id: string) => {
-  const res = await api.get(`/api/resumes/${id}/download-json`, {
-    responseType: "blob",
-  });
-  return res; // Return full response to access headers
+  return fetchBlobDownload(`/api/resumes/${id}/download-json`);
 };
 
 export const downloadCoverLetter = async (id: string) => {
-  const res = await api.get(`/api/resumes/${id}/download-cover-letter`, {
-    responseType: "blob",
-  });
-  return res; // Return full response to access headers
+  return fetchBlobDownload(`/api/resumes/${id}/download-cover-letter`);
 };
 
 export const generateCoverLetter = async (id: string) => {
-  const res = await api.post(`/api/resumes/${id}/generate-cover-letter`, {}, {
-    responseType: "blob",
-  });
-  return res;
+  return fetchBlobPost(`/api/resumes/${id}/generate-cover-letter`);
 };
 
 export interface FromJsonDto {
@@ -274,11 +260,10 @@ export interface FromJsonDto {
 }
 
 export const generatePdfFromJson = async (data: FromJsonDto) => {
-  const res = await api.post(
-    "/api/resumes/from-json",
-    data,
-    { responseType: "blob" },
-  );
-  return res;
+  return fetchBlobPost("/api/resumes/from-json", data);
+};
+
+export const downloadTemplatePreview = async (template: string) => {
+  return fetchBlobDownload(`/api/resumes/templates/${template}/preview`);
 };
 

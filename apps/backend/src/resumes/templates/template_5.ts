@@ -1,7 +1,7 @@
 import * as PDFKit from 'pdfkit';
 import { existsSync } from 'fs';
 import { join } from 'path';
-import { ResumeData } from '.';
+import { ResumeData, DEFAULT_RESUME_PDF_SETTINGS, filterSkillsForPdf, type ResumePdfSettings } from '.';
 
 const titleColor = "#4A4A4A"
 const contentColor = "#2C3E50"
@@ -23,9 +23,14 @@ export class ResumePDFTemplate5 {
   private fontBoldPath: string | null = null;
   private fontItalicPath: string | null = null;
   private fontBoldItalicPath: string | null = null;
+  private pdfSettings: ResumePdfSettings;
 
-  constructor(data: ResumeData, headerImagePath?: string) {
+  constructor(
+    data: ResumeData,
+    pdfSettings: ResumePdfSettings = DEFAULT_RESUME_PDF_SETTINGS,
+  ) {
     this.data = this._normalizeData(data);
+    this.pdfSettings = pdfSettings;
     this.contentWidth = this.pageWidth - 2 * this.marginX;
     this._findFonts();
   }
@@ -45,30 +50,6 @@ export class ResumePDFTemplate5 {
   private _findFonts() {
     // const fontsDir = join(process.cwd(), 'assets', 'fonts', 'cambria');
     const fontsDir = join(process.cwd(), 'assets', 'fonts', 'calibri');
-    // const regularVariants = [
-    //   // 'Cambria.eot',
-    //   'Cambria.ttf',
-    //   // 'Cambria.woff',
-    //   // 'Cambria.woff2',
-    // ];
-    // const boldVariants = [
-    //   // 'Cambria-Bold.eot',
-    //   'Cambria-Bold.ttf',
-    //   // 'Cambria-Bold.woff',
-    //   // 'Cambria-Bold.woff2',
-    // ];
-    // const italicVariants = [
-    //   // 'Cambria-Italic.eot',
-    //   'Cambria-Italic.ttf',
-    //   // 'Cambria-Italic.woff',
-    //   // 'Cambria-Italic.woff2',
-    // ];
-    // const boldItalicVariants = [
-    //   // 'Cambria-BoldItalic.eot',
-    //   'Cambria-BoldItalic.ttf',
-    //   // 'Cambria-BoldItalic.woff',
-    //   // 'Cambria-BoldItalic.woff2',
-    // ];
 
     const regularVariants = [
       'calibri-regular.ttf',
@@ -159,7 +140,6 @@ export class ResumePDFTemplate5 {
 
   private _addName(doc: any) {
     const name = this.data.name || '';
-    const title = this.data.title || '';
 
     doc
       .font(this.fontBold)
@@ -171,15 +151,19 @@ export class ResumePDFTemplate5 {
         align: 'left',
       });
 
-    // doc.moveDown(0.3);
+    doc.moveDown(0.3);
+  }
 
-    // if (title) {
-    //   // doc.font(this.fontName).fontSize(16).fillColor('#4A4A4A').text(title, {
-    //   doc.font(this.fontName).fontSize(16).fillColor(defaultColor).text(title, {
-    //     width: this.contentWidth,
-    //     align: 'left',
-    //   });
-    // }
+  private _addTitle(doc: any) {
+    const title = this.data.title || '';
+
+    if (title) {
+      // doc.font(this.fontName).fontSize(16).fillColor('#4A4A4A').text(title, {
+      doc.font(this.fontName).fontSize(16).fillColor(defaultColor).text(title, {
+        width: this.contentWidth,
+        align: 'left',
+      });
+    }
 
     doc.moveDown(0.1);
   }
@@ -201,23 +185,6 @@ export class ResumePDFTemplate5 {
     doc.text(addressAndPhone, this.marginX, startY, {
       align: 'left'
     });
-
-    // // Draw email with link
-    // doc
-    //   // .fillColor('#0066CC')
-    //   .fillColor(defaultColor)
-    //   .text(email, this.marginX + doc.widthOfString(addressAndPhone), startY, {
-    //     link: `mailto:${email}`,
-    //     underline: false,
-    //   });
-
-
-    // // doc.fillColor('#4A4A4A');
-    // doc.fillColor(defaultColor);
-    // doc.text(` | ${linkedin}`, this.marginX + doc.widthOfString(addressAndPhone) + doc.widthOfString(email), startY);
-
-
-
 
     doc.moveDown(1);
   }
@@ -386,8 +353,15 @@ export class ResumePDFTemplate5 {
   }
 
   private _addSkills(doc: any) {
+    const skills = filterSkillsForPdf(
+      this.data.skills || [],
+      this.pdfSettings.skillCategories,
+    );
+    if (skills.length === 0) {
+      return;
+    }
+
     this._addSectionHeader(doc, 'TECHNICAL SKILLS');
-    const skills = this.data.skills;
 
     // doc.font(this.fontName).fontSize(11).fillColor('#333333');
     doc.font(this.fontName).fontSize(11).fillColor(defaultColor);
@@ -427,6 +401,136 @@ export class ResumePDFTemplate5 {
     }
 
     doc.moveDown(1);
+  }
+
+  private _ensureSpaceForSubtitleSection(
+    doc: any,
+    items: string[],
+    options: {
+      heightEstimateWidth?: number;
+    } = {},
+  ) {
+    if (items.length === 0) {
+      return;
+    }
+
+    const titleFontSize = 11;
+    const contentFontSize = 11;
+    const titleHeight = titleFontSize * 1.2;
+    const titleSpacing = titleFontSize * 0.3;
+    const contentSpacing = contentFontSize * 0.3;
+    const paragraphGap = 2;
+    const heightEstimateWidth =
+      options.heightEstimateWidth ?? this.contentWidth;
+
+    let totalContentHeight = 0;
+    doc.font(this.fontName).fontSize(contentFontSize);
+    for (const item of items) {
+      const itemText = String(item).replace(/\n/g, ' ');
+      const bulletText = `• ${itemText}`;
+      totalContentHeight +=
+        this._estimateTextHeight(
+          doc,
+          bulletText,
+          heightEstimateWidth,
+          contentFontSize,
+        ) + paragraphGap;
+    }
+
+    const titleBlockHeight = this.pdfSettings.showSubTitle
+      ? titleHeight + titleSpacing
+      : 0;
+    const totalSpaceNeeded =
+      titleBlockHeight + totalContentHeight + contentSpacing;
+
+    const currentY = doc.y;
+    const spaceAvailable = this.pageHeight - this.marginB - currentY;
+    const minSpaceRequired = this.pdfSettings.showSubTitle
+      ? titleHeight + titleSpacing + contentFontSize * 1.2
+      : contentFontSize * 1.2;
+
+    if (spaceAvailable < minSpaceRequired) {
+      doc.addPage();
+    } else if (spaceAvailable < totalSpaceNeeded) {
+      if (spaceAvailable < minSpaceRequired * 2) {
+        doc.addPage();
+      }
+    }
+  }
+
+  private _addSubTitle(doc: any, subtitle: string) {
+    doc
+      .font(this.fontBold)
+      .fontSize(11)
+      .fillColor(defaultColor)
+      .text(subtitle, this.marginX, doc.y, {
+        width: this.contentWidth,
+        align: 'left',
+      });
+    doc.moveDown(0.3);
+  }
+
+  private _addBulletItems(
+    doc: any,
+    items: string[],
+    options: {
+      bulletX?: number;
+      textWidth?: number;
+      contentColor?: string;
+      lineGap?: number;
+    } = {},
+  ) {
+    if (items.length === 0) {
+      return;
+    }
+
+    const contentFontSize = 11;
+    const bulletX = options.bulletX ?? this.marginX + 18;
+    const textWidth = options.textWidth ?? this.contentWidth;
+    const contentColor = options.contentColor ?? '#333333';
+
+    doc.font(this.fontName).fontSize(contentFontSize).fillColor(contentColor);
+
+    for (const item of items) {
+      const itemText = String(item).replace(/\n/g, ' ');
+      const bulletText = `• ${itemText}`;
+      const textOptions: {
+        width: number;
+        align: 'left';
+        paragraphGap: number;
+        lineGap?: number;
+      } = {
+        width: textWidth,
+        align: 'left',
+        paragraphGap: 2,
+      };
+      if (options.lineGap !== undefined) {
+        textOptions.lineGap = options.lineGap;
+      }
+      doc.text(bulletText, bulletX, doc.y, textOptions);
+    }
+  }
+
+  private _addCompanySkills(
+    doc: any,
+    skillsInCompany: string | string[] | undefined,
+  ) {
+    if (!skillsInCompany) {
+      return;
+    }
+
+    const skillsText = Array.isArray(skillsInCompany)
+      ? skillsInCompany.join(', ')
+      : String(skillsInCompany);
+    const bulletX = this.marginX;
+    doc.font(this.fontBoldItalic).fontSize(11).fillColor(defaultColor);
+    doc.text('Skills: ', bulletX, doc.y, {
+      width: this.contentWidth,
+      align: 'left',
+      continued: true,
+    });
+    doc.font(this.fontItalic).fillColor(defaultColor).text(skillsText);
+    doc.moveDown(0.3);
   }
 
   private _addExperience(doc: any) {
@@ -502,26 +606,7 @@ export class ResumePDFTemplate5 {
         // .fillColor('#2C3E50')
         .fillColor(defaultColor)
         .text(` | ${company}`);
-
-      // Render company text on the left
-
-      // doc
-      //   .font(this.fontName)
-      //   .fontSize(companyFontSize)
-      //   // .fillColor('#555555')
-      //   .fillColor(defaultColor)
-      //   .text(companyText, this.marginX, lineY, {
-      //     width: col1Width,
-      //     align: 'left',
-      //   });
-
-      // doc
-      //   .font(this.fontItalic)
-      //   .fontSize(companyFontSize)
-      //   .text(dateLocation, this.marginX + col1Width, lineY, {
-      //     width: col2Width,
-      //     align: 'right',
-      //   });
+    
       doc
         .fontSize(companyFontSize)
         .text(dateLocation, this.marginX, doc.y, {
@@ -534,199 +619,41 @@ export class ResumePDFTemplate5 {
       doc.moveDown(1);
 
       const responsibilities = exp.responsibilities || [];
-      // if (responsibilities.length > 0) {
-      //   // Calculate space needed for "Key Qualifications & Responsibilities" section
-      //   const titleFontSize = 11;
-      //   const contentFontSize = 11;
-      //   const titleHeight = titleFontSize * 1.2; // Title line height
-      //   const titleSpacing = titleFontSize * 0.3; // moveDown(0.3) spacing
-      //   const contentSpacing = contentFontSize * 0.3; // Final moveDown(0.3) spacing
-      //   const paragraphGap = 2;
-
-      //   // Estimate height for all responsibility items
-      //   let totalContentHeight = 0;
-      //   doc.font(this.fontName).fontSize(contentFontSize);
-      //   for (const responsibility of responsibilities) {
-      //     const respText = String(responsibility).replace(/\n/g, ' ');
-      //     const bulletText = `• ${respText}`;
-      //     const itemHeight = this._estimateTextHeight(
-      //       doc,
-      //       bulletText,
-      //       this.contentWidth - 18,
-      //       contentFontSize,
-      //     );
-      //     totalContentHeight += itemHeight + paragraphGap;
-      //   }
-
-      //   // Total space needed: title + title spacing + content + content spacing
-      //   const totalSpaceNeeded =
-      //     titleHeight + titleSpacing + totalContentHeight + contentSpacing;
-
-      //   // Check if we need a page break
-      //   const currentY = doc.y;
-      //   const spaceAvailable = this.pageHeight - this.marginB - currentY;
-      //   const minSpaceRequired =
-      //     titleHeight + titleSpacing + contentFontSize * 1.2; // At least title + one line
-
-      //   if (spaceAvailable < minSpaceRequired) {
-      //     // Not enough space even for title + one line, add page break
-      //     doc.addPage();
-      //   } else if (spaceAvailable < totalSpaceNeeded) {
-      //     // We have space for title but not all content
-      //     // Check if we can fit at least the title + a few lines
-      //     if (spaceAvailable < minSpaceRequired * 2) {
-      //       // Not enough space for title + reasonable content, add page break
-      //       doc.addPage();
-      //     }
-      //   }
-
-      //   doc
-      //     .font(this.fontBold)
-      //     .fontSize(titleFontSize)
-      //     .fillColor('#2C3E50')
-      //     .text(
-      //       'Key Qualifications & Responsibilities',
-      //       this.marginX + 18,
-      //       doc.y,
-      //       {
-      //         width: this.contentWidth,
-      //         align: 'left',
-      //       },
-      //     );
-      //   doc.moveDown(0.3);
-
-      //   doc.font(this.fontName).fontSize(contentFontSize).fillColor('#333333');
-
-      //   for (const responsibility of responsibilities) {
-      //     const respText = String(responsibility).replace(/\n/g, ' ');
-      //     const bulletX = this.marginX + 18;
-      //     const bulletText = `• ${respText}`;
-      //     doc.text(bulletText, bulletX, doc.y, {
-      //       width: this.contentWidth - 18,
-      //       align: 'left',
-      //       paragraphGap: 2,
-      //     });
-      //   }
-      //   doc.moveDown(0.3);
-      // }
+      if (responsibilities.length > 0) {
+        this._ensureSpaceForSubtitleSection(doc, responsibilities);
+        if (this.pdfSettings.showSubTitle) {
+          this._addSubTitle(doc, 'Key Qualifications & Responsibilities');
+        }
+        this._addBulletItems(doc, responsibilities, {
+          bulletX: this.marginX,
+          contentColor: defaultColor,
+          lineGap: 3,
+        });
+      }
 
       const achievements = exp.achievements || [];
       if (achievements.length > 0) {
-        // Calculate space needed for "Key Achievements" section
-        const titleFontSize = 11;
-        const contentFontSize = 11;
-        const titleHeight = titleFontSize * 1.2; // Title line height
-        const titleSpacing = titleFontSize * 0.3; // moveDown(0.3) spacing
-        const contentSpacing = contentFontSize * 0.3; // Final moveDown(0.3) spacing
-        const paragraphGap = 2;
+        const achievementBullets =
+          responsibilities.length > 0
+            ? [responsibilities[0], ...achievements]
+            : achievements;
 
-        // Estimate height for all achievement items
-        let totalContentHeight = 0;
-        doc.font(this.fontName).fontSize(contentFontSize);
-        if (responsibilities.length > 0) {
-          for (let i = 0; i < 2; i++) {
-            const achText = String(responsibilities[i]).replace(/\n/g, ' ');
-            const bulletText = `• ${achText}`;
-            const itemHeight = this._estimateTextHeight(
-              doc,
-              bulletText,
-              this.contentWidth,
-              contentFontSize,
-            );
-            totalContentHeight += itemHeight + paragraphGap;
-          }
+        this._ensureSpaceForSubtitleSection(doc, achievementBullets, {
+          heightEstimateWidth: this.contentWidth,
+        });
+        if (this.pdfSettings.showSubTitle) {
+          this._addSubTitle(doc, 'Key Achievements');
         }
-        for (const achievement of achievements) {
-          const achText = String(achievement).replace(/\n/g, ' ');
-          const bulletText = `• ${achText}`;
-          const itemHeight = this._estimateTextHeight(
-            doc,
-            bulletText,
-            this.contentWidth,
-            contentFontSize,
-          );
-          totalContentHeight += itemHeight + paragraphGap;
-        }
-
-        // Total space needed: title + title spacing + content + content spacing
-        const totalSpaceNeeded =
-          titleHeight + titleSpacing + totalContentHeight + contentSpacing;
-
-        // Check if we need a page break
-        const currentY = doc.y;
-        const spaceAvailable = this.pageHeight - this.marginB - currentY;
-        const minSpaceRequired =
-          titleHeight + titleSpacing + contentFontSize * 1.2; // At least title + one line
-
-        if (spaceAvailable < minSpaceRequired) {
-          // Not enough space even for title + one line, add page break
-          doc.addPage();
-        } else if (spaceAvailable < totalSpaceNeeded) {
-          // We have space for title but not all content
-          // Check if we can fit at least the title + a few lines
-          if (spaceAvailable < minSpaceRequired * 2) {
-            // Not enough space for title + reasonable content, add page break
-            doc.addPage();
-          }
-        }
-
-        // doc
-        //   .font(this.fontBold)
-        //   .fontSize(titleFontSize)
-        //   .fillColor('#2C3E50')
-        //   .text('Key Achievements', this.marginX + 18, doc.y, {
-        //     width: this.contentWidth,
-        //     align: 'left',
-        //   });
-        // doc.moveDown(0.3);
-
-        // doc.font(this.fontName).fontSize(contentFontSize).fillColor('#333333');
-        doc.font(this.fontName).fontSize(contentFontSize).fillColor(defaultColor);
-
-        if (responsibilities.length > 0) {
-          for (let i = 0; i < 2; i++) {
-            const achText = String(responsibilities[i]).replace(/\n/g, ' ');
-            const bulletX = this.marginX;
-            const bulletText = `• ${achText}`;
-            doc.text(bulletText, bulletX, doc.y, {
-              width: this.contentWidth - 18,
-              align: 'left',
-              paragraphGap: 2,
-              lineGap: 3
-            });
-          }
-        }
-        for (const achievement of achievements) {
-          const achText = String(achievement).replace(/\n/g, ' ');
-          const bulletX = this.marginX;
-          const bulletText = `• ${achText}`;
-          doc.text(bulletText, bulletX, doc.y, {
-            width: this.contentWidth - 18,
-            align: 'left',
-            paragraphGap: 2,
-            lineGap: 3
-          });
-        }
-        doc.moveDown(0.3);
+        this._addBulletItems(doc, achievements, {
+          bulletX: this.marginX,
+          contentColor: defaultColor,
+          lineGap: 3,
+        });
       }
 
-      // const skillsInCompany = exp.skills;
-      // if (skillsInCompany) {
-      //   const skillsText = Array.isArray(skillsInCompany)
-      //     ? skillsInCompany.join(', ')
-      //     : String(skillsInCompany);
-      //   const bulletX = this.marginX + 18;
-      //   // doc.font(this.fontBoldItalic).fontSize(11).fillColor('#2C3E50');
-      //   doc.font(this.fontBoldItalic).fontSize(11).fillColor(defaultColor);
-      //   doc.text('Skills: ', bulletX, doc.y, {
-      //     width: this.contentWidth - 18,
-      //     align: 'left',
-      //     continued: true,
-      //   });
-      //   // doc.font(this.fontItalic).fillColor('#333333').text(skillsText);
-      //   doc.font(this.fontItalic).fillColor(defaultColor).text(skillsText);
-      //   doc.moveDown(0.3);
-      // }
+      if (this.pdfSettings.showCompanySkills) {
+        this._addCompanySkills(doc, exp.skills);
+      }
 
       doc.moveDown(0.3);
     }
@@ -838,45 +765,6 @@ export class ResumePDFTemplate5 {
             continued: true
           });
       }
-
-      // const col1Width = this.contentWidth * 0.5;
-      // const col2Width = this.contentWidth * 0.5;
-      // // Get current Y position
-      // let lineY = doc.y;
-      // const lineHeight = doc.currentLineHeight(true) || 13;
-
-      // // Check if we need a page break - ensure institution and date stay together
-      // // Calculate if there's enough space on current page
-      // const spaceNeededForInstitution =
-      //   institutionHeight + spacingAfterInstitution + minContentSpace;
-      // const spaceAvailableForInstitution =
-      //   this.pageHeight - this.marginB - lineY;
-
-      // if (spaceAvailableForInstitution < spaceNeededForInstitution) {
-      //   // Not enough space - add a new page
-      //   doc.addPage();
-      //   lineY = this.marginT; // Start at top margin of new page
-      // }
-
-      // doc
-      //   .font(this.fontName)
-      //   .fontSize(11.5)
-      //   // .fillColor('#555555')
-      //   .fillColor(defaultColor)
-      //   .text(institutionText, this.marginX, lineY, {
-      //     width: col1Width,
-      //     align: 'left',
-      //   });
-
-      // doc
-      //   .font(this.fontItalic)
-      //   .fontSize(11.5)
-      //   .text(dateLocation, this.marginX + col1Width, lineY, {
-      //     width: col2Width,
-      //     align: 'right',
-      //   });
-
-      // doc.y = lineY + lineHeight;
       doc.moveDown(1);
     }
   }
@@ -906,6 +794,9 @@ export class ResumePDFTemplate5 {
         });
         doc.on('error', reject);
         this._addName(doc);
+        if (this.pdfSettings.showTitle) {
+          this._addTitle(doc);
+        }
         this._addContact(doc);
         this._addSummary(doc);
         this._addSkills(doc);

@@ -1,8 +1,39 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 import * as bcrypt from 'bcrypt';
+import {
+  DEFAULT_RESUME_SETTINGS,
+  SKILL_CATEGORIES,
+} from '../../ai/resume-settings';
 
 export type UserDocument = HydratedDocument<User>;
+
+@Schema({ _id: false })
+export class ResumeSettingsEmbedded {
+  @Prop({ default: true })
+  showTitle: boolean;
+
+  @Prop({ default: true })
+  showSubTitle: boolean;
+
+  @Prop({ default: true })
+  showCompanySkills: boolean;
+
+  @Prop({ type: [String], default: () => [...SKILL_CATEGORIES] })
+  skillCategories: string[];
+
+  @Prop({ default: DEFAULT_RESUME_SETTINGS.responsibilitiesCount })
+  responsibilitiesCount: number;
+
+  @Prop({ default: DEFAULT_RESUME_SETTINGS.achievementsCount })
+  achievementsCount: number;
+
+  @Prop({ default: DEFAULT_RESUME_SETTINGS.skillsPerCategoryCount })
+  skillsPerCategoryCount: number;
+
+  @Prop({ default: DEFAULT_RESUME_SETTINGS.companySkillsCount })
+  companySkillsCount: number;
+}
 
 @Schema()
 export class User {
@@ -44,6 +75,12 @@ export class User {
 
   @Prop({ type: String, required: false, select: false })
   encryptedAnthropicApiKey?: string;
+
+  @Prop({
+    type: ResumeSettingsEmbedded,
+    default: () => ({ ...DEFAULT_RESUME_SETTINGS }),
+  })
+  resumeSettings: ResumeSettingsEmbedded;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

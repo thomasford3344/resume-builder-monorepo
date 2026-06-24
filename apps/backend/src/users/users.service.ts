@@ -1,6 +1,4 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { existsSync, readFileSync } from 'fs';
-import { join } from 'path';
 
 import { Model, QueryFilter } from 'mongoose';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -9,17 +7,13 @@ import { User, UserDocument } from './schemas/user.schema';
 import { InjectModel } from '@nestjs/mongoose';
 import * as bcrypt from 'bcrypt';
 import { EncryptionService } from '../crypto/encryption.service';
+import {
+  resolveResumeSettings,
+  type ResumeSettings,
+} from '../ai/resume-settings';
 
 const API_KEY_FIELDS =
   '+encryptedOpenaiApiKey +encryptedAnthropicApiKey';
-
-const TEMPLATE_PREVIEW_FILES: Record<string, string> = {
-  template1: 'Template 1.pdf',
-  template2: 'Template 2.pdf',
-  template3: 'Template 3.pdf',
-  template4: 'Template 4.pdf',
-  template5: 'Template 5.pdf',
-};
 
 @Injectable()
 export class UsersService {
@@ -38,6 +32,9 @@ export class UsersService {
 
     return {
       ...rest,
+      resumeSettings: resolveResumeSettings(
+        rest.resumeSettings as Partial<ResumeSettings> | undefined,
+      ),
       hasOpenaiApiKey: !!encryptedOpenaiApiKey,
       hasAnthropicApiKey: !!encryptedAnthropicApiKey,
     };
@@ -64,6 +61,39 @@ export class UsersService {
         ? this.encryptionService.encrypt(trimmed)
         : undefined;
     }
+  }
+
+  async getResumeSettings(userId: string): Promise<ResumeSettings> {
+    const user = await this.userModel
+      .findById(userId)
+      .select('resumeSettings')
+      .exec();
+
+    if (!user) {
+      throw new NotFoundException(`User with ID ${userId} not found`);
+    }
+
+    return resolveResumeSettings(
+      user.resumeSettings
+        ? (JSON.parse(
+            JSON.stringify(user.resumeSettings),
+          ) as Partial<ResumeSettings>)
+        : undefined,
+    );
+  }
+
+  private applyResumeSettingsUpdate(
+    user: UserDocument,
+    resumeSettings?: Partial<ResumeSettings>,
+  ): void {
+    if (resumeSettings === undefined) {
+      return;
+    }
+
+    user.resumeSettings = resolveResumeSettings({
+      ...(user.resumeSettings ? { ...user.resumeSettings } : {}),
+      ...resumeSettings,
+    } as Partial<ResumeSettings>) as UserDocument['resumeSettings'];
   }
 
   async getApiKeysForUser(userId: string): Promise<{
@@ -158,6 +188,7 @@ export class UsersService {
       user.defaultAiVersion = updateUserDto.defaultAiVersion;
     }
 
+    this.applyResumeSettingsUpdate(user, updateUserDto.resumeSettings);
     this.applyApiKeyUpdates(user, updateUserDto);
 
     await user.save();
@@ -220,6 +251,7 @@ export class UsersService {
       user.defaultAiVersion = updateUserDto.defaultAiVersion;
     }
 
+    this.applyResumeSettingsUpdate(user, updateUserDto.resumeSettings);
     this.applyApiKeyUpdates(user, updateUserDto);
 
     await user.save();
@@ -259,19 +291,5 @@ export class UsersService {
         ? this.encryptionService.decrypt(user.encryptedAnthropicApiKey)
         : null,
     };
-  }
-
-  getTemplatePreviewPdf(template: string): Buffer {
-    const filename = TEMPLATE_PREVIEW_FILES[template];
-    if (!filename) {
-      throw new BadRequestException('Invalid template');
-    }
-
-    const filePath = join(process.cwd(), 'templates', filename);
-    if (!existsSync(filePath)) {
-      throw new NotFoundException('Template preview not found');
-    }
-
-    return readFileSync(filePath);
   }
 }
