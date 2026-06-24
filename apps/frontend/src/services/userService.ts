@@ -159,3 +159,10 @@ export const revealApiKeys = async (currentPassword: string) => {
   );
   return res.data;
 };
+
+export const previewTemplate = async (template: string) => {
+  const res = await api.get(`/api/users/templates/${template}/preview`, {
+    responseType: "blob",
+  });
+  return res.data as Blob;
+};

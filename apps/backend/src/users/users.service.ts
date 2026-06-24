@@ -1,4 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { existsSync, readFileSync } from 'fs';
+import { join } from 'path';
 
 import { Model, QueryFilter } from 'mongoose';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -10,6 +12,14 @@ import { EncryptionService } from '../crypto/encryption.service';
 
 const API_KEY_FIELDS =
   '+encryptedOpenaiApiKey +encryptedAnthropicApiKey';
+
+const TEMPLATE_PREVIEW_FILES: Record<string, string> = {
+  template1: 'Template 1.pdf',
+  template2: 'Template 2.pdf',
+  template3: 'Template 3.pdf',
+  template4: 'Template 4.pdf',
+  template5: 'Template 5.pdf',
+};
 
 @Injectable()
 export class UsersService {
@@ -231,5 +241,19 @@ export class UsersService {
         ? this.encryptionService.decrypt(user.encryptedAnthropicApiKey)
         : null,
     };
+  }
+
+  getTemplatePreviewPdf(template: string): Buffer {
+    const filename = TEMPLATE_PREVIEW_FILES[template];
+    if (!filename) {
+      throw new BadRequestException('Invalid template');
+    }
+
+    const filePath = join(process.cwd(), 'templates', filename);
+    if (!existsSync(filePath)) {
+      throw new NotFoundException('Template preview not found');
+    }
+
+    return readFileSync(filePath);
   }
 }

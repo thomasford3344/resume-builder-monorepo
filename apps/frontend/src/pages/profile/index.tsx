@@ -26,6 +26,7 @@ import {
   getProfile,
   updateProfile,
   revealApiKeys,
+  previewTemplate,
   type UserResponse,
   type UpdateProfileDto,
 } from "../../services/userService";
@@ -93,6 +94,7 @@ const Profile: React.FC = () => {
   } | null>(null);
   const [apiKeysError, setApiKeysError] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  const [previewingTemplate, setPreviewingTemplate] = React.useState(false);
   const templateOptions = [...Array(5)].map((_, index) => ({
     value: `template${index + 1}`,
     label: `Template ${index + 1}`,
@@ -147,6 +149,26 @@ const Profile: React.FC = () => {
       ...prev,
       "template": option === "" ? "template1" : option
     }));
+  };
+
+  const handlePreviewTemplate = async () => {
+    if (!formData.template) {
+      return;
+    }
+
+    setPreviewingTemplate(true);
+    try {
+      const pdfBlob = await previewTemplate(formData.template);
+      const url = window.URL.createObjectURL(
+        new Blob([pdfBlob], { type: "application/pdf" }),
+      );
+      window.open(url, "_blank", "noopener,noreferrer");
+      window.setTimeout(() => window.URL.revokeObjectURL(url), 60_000);
+    } catch {
+      toast.error("Failed to load template preview");
+    } finally {
+      setPreviewingTemplate(false);
+    }
   };
 
   const handleHideApiKeys = () => {
@@ -314,21 +336,38 @@ const Profile: React.FC = () => {
             variant="outlined"
           />
 
-          <FormControl fullWidth variant="outlined" size="small">
-            <InputLabel id="template-select-label">Template</InputLabel>
-            <Select
-              labelId="template-select-label"
-              label="Template"
-              value={formData.template}
-              onChange={(e) => handleTemplateChange(e.target.value)}
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={2}
+            alignItems="flex-start"
+          >
+            <Box sx={apiKeyInputWrapSx}>
+              <FormControl fullWidth variant="outlined" size="small">
+                <InputLabel id="template-select-label">Template</InputLabel>
+                <Select
+                  labelId="template-select-label"
+                  label="Template"
+                  value={formData.template}
+                  onChange={(e) => handleTemplateChange(e.target.value)}
+                >
+                  {templateOptions.map((option) => (
+                    <MenuItem key={option.value} value={option.value}>
+                      {option.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Box>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={handlePreviewTemplate}
+              disabled={!formData.template || previewingTemplate}
+              sx={apiKeyActionButtonSx}
             >
-              {templateOptions.map((option) => (
-                <MenuItem key={option.value} value={option.value}>
-                  {option.label}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+              {previewingTemplate ? "Loading..." : "Preview"}
+            </Button>
+          </Stack>
 
           <TextField
             label="Resume Prompt"

@@ -880,7 +880,7 @@ const Resumes: React.FC = () => {
                       ? getProviderLabel(resume.aiModel as AiProvider)
                       : "-"}
                   </TableCell> */}
-                  <TableCell align="left">
+                  <TableCell align="center">
                     <AiVersionBadge
                       aiModel={resume.aiModel}
                       aiVersion={resume.aiVersion}
