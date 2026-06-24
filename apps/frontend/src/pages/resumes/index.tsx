@@ -752,7 +752,7 @@ const Resumes: React.FC = () => {
       {/* Filters Section */}
       <Paper sx={{ p: 2, mb: 2 }}>
           <Typography variant="h6" gutterBottom>
-            Filter Resumes
+            Filters
           </Typography>
           <Grid container spacing={2} alignItems="flex-end">
             <Grid size={{ xs: 12, sm: 6, md: "grow" }}>

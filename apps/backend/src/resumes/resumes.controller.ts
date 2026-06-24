@@ -38,6 +38,7 @@ import {
   answerQuestionsSchema,
 } from './dto/answer-questions.dto';
 import { type FromJsonDto, fromJsonSchema } from './dto/from-json.dto';
+import { sendAttachment } from '../common/download-headers';
 
 @Controller('resumes')
 export class ResumesController {
@@ -48,6 +49,22 @@ export class ResumesController {
   @UsePipes(new ZodValidationPipe(filterResumeSchema))
   async findAll(@Request() req, @Query() filters: FilterResumeDto) {
     return this.resumesService.findAllByUserId(req.user._id, filters);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('templates/:template/preview')
+  async downloadTemplatePreview(
+    @Request() req,
+    @Param('template') template: string,
+    @Res() res: Response,
+  ) {
+    const { pdfBuffer, filename } =
+      await this.resumesService.generateTemplatePreviewPdf(
+        template,
+        req.user._id,
+      );
+
+    sendAttachment(res, 'application/pdf', filename, pdfBuffer);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -73,12 +90,7 @@ export class ResumesController {
       .trim()
       .replace(/\s+/g, ' ');
     const filename = `${sanitizedName}.pdf`;
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.setHeader('Content-Length', pdfBuffer.length);
-
-    // Send PDF buffer
-    res.send(pdfBuffer);
+    sendAttachment(res, 'application/pdf', filename, pdfBuffer);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -202,10 +214,7 @@ export class ResumesController {
     console.log(`\n=====================================================================================\nGenerated successfully at ${new Date()}: \nName: ${userName}, Company: ${fromJsonDto.companyName}, Title: ${fromJsonDto.roleType}`);
 
     const filename = `${sanitizedName}.pdf`;
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.setHeader('Content-Length', pdfBuffer.length);
-    res.send(pdfBuffer);
+    sendAttachment(res, 'application/pdf', filename, pdfBuffer);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -286,7 +295,6 @@ export class ResumesController {
     const pdfBuffer = await this.resumesService.downloadResumePDF(
       id,
       req.user._id,
-      req.user.template,
     );
     const userName = req.user.name;
 
@@ -297,12 +305,7 @@ export class ResumesController {
       .replace(/\s+/g, '_')
       ;
     const filename = `${sanitizedName}.pdf`;
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.setHeader('Content-Length', pdfBuffer.length);
-
-    // Send PDF buffer
-    res.send(pdfBuffer);
+    sendAttachment(res, 'application/pdf', filename, pdfBuffer);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -324,12 +327,7 @@ export class ResumesController {
       .trim()
       .replace(/\s+/g, '_');
     const filename = `${sanitizedName}.json`;
-    res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.setHeader('Content-Length', Buffer.byteLength(jsonContent, 'utf-8'));
-
-    // Send JSON content
-    res.send(jsonContent);
+    sendAttachment(res, 'application/json', filename, jsonContent);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -349,10 +347,7 @@ export class ResumesController {
 
     const filename = `${sanitizedName}_Cover_Letter.pdf`;
 
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.setHeader('Content-Length', pdfBuffer.length);
-    res.send(pdfBuffer);
+    sendAttachment(res, 'application/pdf', filename, pdfBuffer);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -376,13 +371,7 @@ export class ResumesController {
 
     const filename = `${sanitizedName}_Cover_Letter.pdf`;
 
-    // Set headers for PDF download
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.setHeader('Content-Length', pdfBuffer.length);
-
-    // Send PDF buffer
-    res.send(pdfBuffer);
+    sendAttachment(res, 'application/pdf', filename, pdfBuffer);
   }
 
   @UseGuards(JwtAuthGuard)

@@ -19,6 +19,8 @@ import {
   ListItemText,
   ToggleButton,
   ToggleButtonGroup,
+  Checkbox,
+  Divider,
 } from "@mui/material";
 import {
   Visibility as VisibilityIcon,
@@ -29,6 +31,7 @@ import {
   Lock as LockIcon,
   LightMode as LightModeIcon,
   DarkMode as DarkModeIcon,
+  Description as DescriptionIcon,
 } from "@mui/icons-material";
 import { Link } from "react-router";
 import { toast } from "react-toastify";
@@ -37,10 +40,10 @@ import {
   getProfile,
   updateProfile,
   revealApiKeys,
-  previewTemplate,
   type UserResponse,
   type UpdateProfileDto,
 } from "../../services/userService";
+import { downloadTemplatePreview } from "../../services/resumeService";
 import { resizableMultilineSx, PROMPT_FIELD_ROWS } from "../../constants/textFieldStyles";
 import {
   CUSTOM_PROMPT_HELPER_TEXT,
@@ -54,8 +57,21 @@ import {
 } from "../../constants/aiModels";
 import { useThemeMode } from "../../components/common/ThemeContext";
 import { alpha } from "@mui/material/styles";
+import {
+  DEFAULT_RESUME_SETTINGS,
+  SKILL_CATEGORIES,
+  resolveResumeSettings,
+  resumeSettingsEqual,
+  type ResumeSettings,
+  type SkillCategory,
+} from "../../constants/resumeSettings";
 
-type ProfileSection = "general" | "prompts" | "api-keys" | "security";
+type ProfileSection =
+  | "general"
+  | "resume"
+  | "prompts"
+  | "api-keys"
+  | "security";
 
 const AUTO_SAVE_DELAY_MS = 800;
 const API_KEY_AUTO_SAVE_DELAY_MS = 1000;
@@ -69,8 +85,14 @@ const PROFILE_SECTIONS: Array<{
   {
     id: "general",
     label: "General",
-    description: "Name, resume template, appearance, and default AI model",
+    description: "Name, appearance, and default AI model",
     icon: <PersonIcon fontSize="small" />,
+  },
+  {
+    id: "resume",
+    label: "Resume",
+    description: "Template, PDF visibility, and AI generation options",
+    icon: <DescriptionIcon fontSize="small" />,
   },
   {
     id: "prompts",
@@ -126,6 +148,51 @@ const apiKeyActionButtonSx = {
   width: { xs: "100%", sm: 148 },
 };
 
+const settingsInputRowSx = {
+  direction: { xs: "column", sm: "row" },
+  spacing: 2,
+  alignItems: "flex-start",
+} as const;
+
+const settingsInputSpacerSx = {
+  ...apiKeyActionButtonSx,
+  visibility: "hidden",
+  pointerEvents: "none",
+};
+
+const resumeCheckboxRowSx = {
+  display: "flex",
+  alignItems: "flex-start",
+  gap: 0.5,
+} as const;
+
+function ResumeCheckboxRow({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (
+    event: React.ChangeEvent<HTMLInputElement>,
+    checked: boolean,
+  ) => void;
+}) {
+  return (
+    <Box sx={resumeCheckboxRowSx}>
+      <Checkbox
+        checked={checked}
+        onChange={onChange}
+        size="small"
+        sx={{ p: 0.5, mt: -0.25 }}
+      />
+      <Typography variant="body1" sx={{ pt: 0 }}>
+        {label}
+      </Typography>
+    </Box>
+  );
+}
+
 const Profile: React.FC = () => {
   const { mode, setMode } = useThemeMode();
   const skipAutoSaveRef = React.useRef(true);
@@ -147,6 +214,8 @@ const Profile: React.FC = () => {
     newPassword: "",
     confirmPassword: "",
   });
+  const [resumeSettingsForm, setResumeSettingsForm] =
+    React.useState<ResumeSettings>(DEFAULT_RESUME_SETTINGS);
   const [clearOpenaiApiKey, setClearOpenaiApiKey] = React.useState(false);
   const [clearAnthropicApiKey, setClearAnthropicApiKey] = React.useState(false);
   const [verifyPassword, setVerifyPassword] = React.useState("");
@@ -160,7 +229,8 @@ const Profile: React.FC = () => {
   const [apiKeysError, setApiKeysError] = React.useState<string | null>(null);
   const [securityError, setSecurityError] = React.useState<string | null>(null);
   const [changingPassword, setChangingPassword] = React.useState(false);
-  const [previewingTemplate, setPreviewingTemplate] = React.useState(false);
+  const [downloadingTemplatePreview, setDownloadingTemplatePreview] =
+    React.useState(false);
   const templateOptions = [...Array(5)].map((_, index) => ({
     value: `template${index + 1}`,
     label: `Template ${index + 1}`,
@@ -209,6 +279,7 @@ const Profile: React.FC = () => {
       const profile = await getProfile();
       const defaultAi = resolveUserDefaultAi(profile);
       setUser(profile);
+      setResumeSettingsForm(resolveResumeSettings(profile.resumeSettings));
       setFormData({
         name: profile.name || "",
         template: profile.template || "template1",
@@ -282,23 +353,40 @@ const Profile: React.FC = () => {
     }
   };
 
-  const handlePreviewTemplate = async () => {
+  const handleDownloadTemplatePreview = async () => {
     if (!formData.template) {
       return;
     }
 
-    setPreviewingTemplate(true);
+    setDownloadingTemplatePreview(true);
     try {
-      const pdfBlob = await previewTemplate(formData.template);
-      const url = window.URL.createObjectURL(
-        new Blob([pdfBlob], { type: "application/pdf" }),
-      );
-      window.open(url, "_blank", "noopener,noreferrer");
-      window.setTimeout(() => window.URL.revokeObjectURL(url), 60_000);
+      const response = await downloadTemplatePreview(formData.template);
+      const pdfBlob = response.data;
+
+      const contentDisposition = response.headers["content-disposition"];
+      let filename = `${formData.template}_preview.pdf`;
+
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(
+          /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/,
+        );
+        if (filenameMatch && filenameMatch[1]) {
+          filename = filenameMatch[1].replace(/['"]/g, "");
+        }
+      }
+
+      const url = window.URL.createObjectURL(pdfBlob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
     } catch {
-      toast.error("Failed to load template preview");
+      toast.error("Failed to download template preview");
     } finally {
-      setPreviewingTemplate(false);
+      setDownloadingTemplatePreview(false);
     }
   };
 
@@ -471,6 +559,27 @@ const Profile: React.FC = () => {
       return;
     }
 
+    const savedSettings = resolveResumeSettings(user.resumeSettings);
+    if (resumeSettingsEqual(resumeSettingsForm, savedSettings)) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      void persistProfile({
+        resumeSettings: resumeSettingsForm,
+      }).catch(() => {
+        toast.error("Failed to save resume settings");
+      });
+    }, AUTO_SAVE_DELAY_MS);
+
+    return () => window.clearTimeout(timer);
+  }, [resumeSettingsForm, user, persistProfile]);
+
+  React.useEffect(() => {
+    if (skipAutoSaveRef.current || !user) {
+      return;
+    }
+
     if (clearOpenaiApiKey || clearAnthropicApiKey) {
       return;
     }
@@ -517,46 +626,18 @@ const Profile: React.FC = () => {
 
   const renderGeneralSection = () => (
     <Stack spacing={3}>
-      <TextField
-        label="Name"
-        value={formData.name}
-        onChange={handleInputChange("name")}
-        fullWidth
-        size="small"
-        variant="outlined"
-      />
-
-      <Stack
-        direction={{ xs: "column", sm: "row" }}
-        spacing={2}
-        alignItems="flex-start"
-      >
+      <Stack {...settingsInputRowSx}>
         <Box sx={apiKeyInputWrapSx}>
-          <FormControl fullWidth variant="outlined" size="small">
-            <InputLabel id="template-select-label">Template</InputLabel>
-            <Select
-              labelId="template-select-label"
-              label="Template"
-              value={formData.template}
-              onChange={(e) => handleTemplateChange(e.target.value)}
-            >
-              {templateOptions.map((option) => (
-                <MenuItem key={option.value} value={option.value}>
-                  {option.label}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+          <TextField
+            label="Name"
+            value={formData.name}
+            onChange={handleInputChange("name")}
+            fullWidth
+            size="small"
+            variant="outlined"
+          />
         </Box>
-        <Button
-          variant="outlined"
-          size="small"
-          onClick={handlePreviewTemplate}
-          disabled={!formData.template || previewingTemplate}
-          sx={apiKeyActionButtonSx}
-        >
-          {previewingTemplate ? "Loading..." : "Preview"}
-        </Button>
+        <Box sx={settingsInputSpacerSx} aria-hidden />
       </Stack>
 
       <Box>
@@ -873,42 +954,236 @@ const Profile: React.FC = () => {
     </Stack>
   );
 
+  const handleResumeCountChange =
+    (field: keyof Pick<
+      ResumeSettings,
+      | "responsibilitiesCount"
+      | "achievementsCount"
+      | "skillsPerCategoryCount"
+      | "companySkillsCount"
+    >) =>
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const parsed = Number.parseInt(event.target.value, 10);
+      setResumeSettingsForm((prev) => ({
+        ...prev,
+        [field]: Number.isFinite(parsed) ? parsed : 0,
+      }));
+    };
+
+  const handleSkillCategoryToggle =
+    (category: SkillCategory) =>
+    (_event: React.ChangeEvent<HTMLInputElement>, checked: boolean) => {
+      setResumeSettingsForm((prev) => {
+        const nextCategories = checked
+          ? [...prev.skillCategories, category]
+          : prev.skillCategories.filter((item) => item !== category);
+
+        return {
+          ...prev,
+          skillCategories:
+            nextCategories.length > 0 ? nextCategories : [...SKILL_CATEGORIES],
+        };
+      });
+    };
+
+  const renderResumeSection = () => (
+    <Stack spacing={3}>
+      <Stack {...settingsInputRowSx}>
+        <Box sx={apiKeyInputWrapSx}>
+          <FormControl fullWidth variant="outlined" size="small">
+            <InputLabel id="template-select-label">Template</InputLabel>
+            <Select
+              labelId="template-select-label"
+              label="Template"
+              value={formData.template}
+              onChange={(e) => handleTemplateChange(e.target.value)}
+            >
+              {templateOptions.map((option) => (
+                <MenuItem key={option.value} value={option.value}>
+                  {option.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Box>
+        <Button
+          variant="outlined"
+          size="small"
+          onClick={handleDownloadTemplatePreview}
+          disabled={!formData.template || downloadingTemplatePreview}
+          sx={apiKeyActionButtonSx}
+        >
+          {downloadingTemplatePreview ? "Downloading..." : "Download Preview"}
+        </Button>
+      </Stack>
+
+      <Divider />
+
+      <Box>
+        <Typography variant="subtitle1" gutterBottom>
+          PDF visibility
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+          Control which sections appear in generated resume PDF files.
+        </Typography>
+        <Stack spacing={0.5}>
+          <ResumeCheckboxRow
+            label="Title"
+            checked={resumeSettingsForm.showTitle}
+            onChange={(_event, checked) =>
+              setResumeSettingsForm((prev) => ({
+                ...prev,
+                showTitle: checked,
+              }))
+            }
+          />
+          <ResumeCheckboxRow
+            label='Subtitles ("Key Qualifications & Responsibilities", "Key Achievements")'
+            checked={resumeSettingsForm.showSubTitle}
+            onChange={(_event, checked) =>
+              setResumeSettingsForm((prev) => ({
+                ...prev,
+                showSubTitle: checked,
+              }))
+            }
+          />
+          <ResumeCheckboxRow
+            label="Skills in company"
+            checked={resumeSettingsForm.showCompanySkills}
+            onChange={(_event, checked) =>
+              setResumeSettingsForm((prev) => ({
+                ...prev,
+                showCompanySkills: checked,
+              }))
+            }
+          />
+        </Stack>
+      </Box>
+
+      <Divider />
+
+      <Box>
+        <Typography variant="subtitle1" gutterBottom>
+          Skill categories
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+          Selected categories are used in AI resume generation. At least one
+          category must remain enabled.
+        </Typography>
+        <Stack spacing={0.5}>
+          {SKILL_CATEGORIES.map((category) => (
+            <ResumeCheckboxRow
+              key={category}
+              label={category}
+              checked={resumeSettingsForm.skillCategories.includes(category)}
+              onChange={handleSkillCategoryToggle(category)}
+            />
+          ))}
+        </Stack>
+      </Box>
+
+      <Divider />
+
+      <Box>
+        <Typography variant="subtitle1" gutterBottom>
+          Generation counts
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          These values set minimum item counts in the AI JSON schema.
+        </Typography>
+        <Stack spacing={2}>
+          <TextField
+            label="Responsibilities per role"
+            type="number"
+            size="small"
+            inputProps={{ min: 0, max: 30 }}
+            value={resumeSettingsForm.responsibilitiesCount}
+            onChange={handleResumeCountChange("responsibilitiesCount")}
+            sx={{ maxWidth: 320 }}
+          />
+          <TextField
+            label="Achievements per role"
+            type="number"
+            size="small"
+            inputProps={{ min: 0, max: 30 }}
+            value={resumeSettingsForm.achievementsCount}
+            onChange={handleResumeCountChange("achievementsCount")}
+            sx={{ maxWidth: 320 }}
+          />
+          <TextField
+            label="Skills per category"
+            type="number"
+            size="small"
+            inputProps={{ min: 0, max: 30 }}
+            value={resumeSettingsForm.skillsPerCategoryCount}
+            onChange={handleResumeCountChange("skillsPerCategoryCount")}
+            sx={{ maxWidth: 320 }}
+          />
+          <TextField
+            label="Company skills per role"
+            type="number"
+            size="small"
+            inputProps={{ min: 0, max: 30 }}
+            value={resumeSettingsForm.companySkillsCount}
+            onChange={handleResumeCountChange("companySkillsCount")}
+            sx={{ maxWidth: 320 }}
+          />
+        </Stack>
+      </Box>
+    </Stack>
+  );
+
   const renderSecuritySection = () => (
     <Stack spacing={3}>
       {securityError && <Alert severity="error">{securityError}</Alert>}
 
-      <TextField
-        label="Current Password"
-        type="password"
-        value={formData.currentPassword}
-        onChange={handleInputChange("currentPassword")}
-        fullWidth
-        variant="outlined"
-        helperText="Required to change your password"
-        size="small"
-      />
+      <Stack {...settingsInputRowSx}>
+        <Box sx={apiKeyInputWrapSx}>
+          <TextField
+            label="Current Password"
+            type="password"
+            value={formData.currentPassword}
+            onChange={handleInputChange("currentPassword")}
+            fullWidth
+            variant="outlined"
+            helperText="Required to change your password"
+            size="small"
+          />
+        </Box>
+        <Box sx={settingsInputSpacerSx} aria-hidden />
+      </Stack>
 
-      <TextField
-        label="New Password"
-        type="password"
-        value={formData.newPassword}
-        onChange={handleInputChange("newPassword")}
-        fullWidth
-        variant="outlined"
-        helperText="Must be at least 6 characters"
-        size="small"
-      />
+      <Stack {...settingsInputRowSx}>
+        <Box sx={apiKeyInputWrapSx}>
+          <TextField
+            label="New Password"
+            type="password"
+            value={formData.newPassword}
+            onChange={handleInputChange("newPassword")}
+            fullWidth
+            variant="outlined"
+            helperText="Must be at least 6 characters"
+            size="small"
+          />
+        </Box>
+        <Box sx={settingsInputSpacerSx} aria-hidden />
+      </Stack>
 
-      <TextField
-        label="Confirm New Password"
-        type="password"
-        value={formData.confirmPassword}
-        onChange={handleInputChange("confirmPassword")}
-        fullWidth
-        variant="outlined"
-        helperText="Must match new password"
-        size="small"
-      />
+      <Stack {...settingsInputRowSx}>
+        <Box sx={apiKeyInputWrapSx}>
+          <TextField
+            label="Confirm New Password"
+            type="password"
+            value={formData.confirmPassword}
+            onChange={handleInputChange("confirmPassword")}
+            fullWidth
+            variant="outlined"
+            helperText="Must match new password"
+            size="small"
+          />
+        </Box>
+        <Box sx={settingsInputSpacerSx} aria-hidden />
+      </Stack>
 
       <Box>
         <Button
@@ -927,6 +1202,8 @@ const Profile: React.FC = () => {
     switch (activeSection) {
       case "general":
         return renderGeneralSection();
+      case "resume":
+        return renderResumeSection();
       case "prompts":
         return renderPromptsSection();
       case "api-keys":

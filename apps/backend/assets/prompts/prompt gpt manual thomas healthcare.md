@@ -443,12 +443,12 @@ EXPERIENCE COUNT RULES — STRICT
 
 For EACH experience entry, generate EXACTLY:
 
-- responsibilities: 3 items
+- responsibilities: 2 items
 - achievements: 5 items
 - skills: 8 items
 
 This means every job must contain:
-- EXACTLY 3 responsibility bullets
+- EXACTLY 2 responsibility bullets
 - EXACTLY 5 achievement bullets
 - EXACTLY 8 role-specific skills
 
@@ -556,6 +556,27 @@ For each role:
 - Include cross-functional work in every role.
 - Do not introduce managerial scope unless the JD explicitly requires it.
 - Keep all work realistic for a senior IC with comparable experience.
+- In every Work History entry, include the relevant company’s products. Integrate them naturally into the role’s bullet points where appropriate, while keeping all claims consistent with the candidate’s experience. Do not invent unsupported responsibilities, achievements, or product usage.
+
+Use only these exact company-to-product mappings:
+
+CVS Health: CVS Virtual Care®, MinuteClinic®, CVS Health® app, Digital Scheduling and Patient Engagement Platform
+
+BRIDGE Hospice: Patient Intake and Care Coordination Platform, Hospice Referral and Admission Platform, Clinical Document Management System
+
+UMC Physicians: MyTeamCare Patient Portal, MyTeamCare Mobile App, Online Scheduling, Provider Directory
+
+GermBlast: GermBlast® Field Service Operations Platform, Service Scheduling and Dispatch System, Technician Operations Dashboard
+
+========================================
+COMPANY PRODUCT RULES — STRICT
+========================================
+
+- Products must only be mentioned within the corresponding company’s Work History section.
+- Do not assign or reference a product under the wrong company.
+- Integrate product names naturally into bullet points rather than listing them separately.
+- Ensure product usage is realistic and consistent with the described responsibilities.
+- Preserve all other aspects of the original prompt unchanged.
 
 ========================================
 TECHNOLOGY TIMELINE RULES — STRICT
@@ -651,7 +672,7 @@ Before returning the JSON, silently verify:
 - Root-level "title" uses the normalized JD title.
 - CVS Health role title uses the exact normalized JD title if CVS Health exists.
 - If CVS Health does not exist, the most recent role title uses the exact normalized JD title.
-- Every experience entry has EXACTLY 3 responsibilities.
+- Every experience entry has EXACTLY 2 responsibilities.
 - Every experience entry has EXACTLY 5 achievements.
 - Every experience entry has EXACTLY 8 skills.
 - Every responsibility includes at least 1 metric.

@@ -1,4 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { existsSync, readFileSync } from 'fs';
+import { join } from 'path';
 import { InjectModel } from '@nestjs/mongoose';
 import { ResumesGateway } from './resumes.gateway';
 import { Model } from 'mongoose';
@@ -13,9 +15,27 @@ import {
   ResumePDFTemplate3,
   ResumePDFTemplate4,
   ResumePDFTemplate5,
+  DEFAULT_RESUME_PDF_SETTINGS,
+  type ResumePdfSettings,
 } from './templates';
 import { OpenAIService } from '../openai/openai.service';
 import { UsersService } from '../users/users.service';
+import { getResumePdfSettings } from '../ai/resume-settings';
+
+const VALID_TEMPLATES = [
+  'template1',
+  'template2',
+  'template3',
+  'template4',
+  'template5',
+] as const;
+
+const SAMPLE_RESUME_JSON_PATH = join(
+  process.cwd(),
+  'assets',
+  'json',
+  'sample.json',
+);
 
 @Injectable()
 export class ResumesService {
@@ -91,7 +111,12 @@ export class ResumesService {
     aiVersion?: string,
     generationSource: 'ai' | 'manual' = 'ai',
   ) {
-    const pdfBuffer = await this.generatePDF(json, userTemplate || 'template1');
+    const pdfSettings = await this.getResumePdfSettingsForUser(userId);
+    const pdfBuffer = await this.generatePDF(
+      json,
+      userTemplate || 'template1',
+      pdfSettings,
+    );
 
     const resume = new this.resumeModel({
       userId,
@@ -148,7 +173,12 @@ export class ResumesService {
     conversationId?: string,
     coverLetter?: string,
   ) {
-    const pdfBuffer = await this.generatePDF(json, userTemplate || 'template1');
+    const pdfSettings = await this.getResumePdfSettingsForUser(userId);
+    const pdfBuffer = await this.generatePDF(
+      json,
+      userTemplate || 'template1',
+      pdfSettings,
+    );
 
     // Prepare cover letter if provided
     let coverLetterText: string | undefined;
@@ -2765,12 +2795,14 @@ CANDIDATE_BACKGROUND:
 
     // Call OpenAI API to generate the resume JSON (includes cover_letter)
     const apiKeys = await this.usersService.getApiKeysForUser(userId);
+    const resumeSettings = await this.usersService.getResumeSettings(userId);
     const { resumeJson, threadId } = await this.openAIService.generateResume(
       resume.jobDescription,
       instructions,
       (resume.aiModel as 'openai' | 'claude') || 'openai',
       resume.aiVersion || 'gpt-4.1-mini',
       apiKeys,
+      resumeSettings,
     );
 
     // Extract cover letter from resume JSON and remove it from the JSON
@@ -3001,45 +3033,100 @@ CANDIDATE_BACKGROUND:
     return str.match(/\[([^\]]+)\]\(mailto:[^)]+\)/)?.[1] ?? str;
   }
 
+  async generateTemplatePreviewPdf(
+    template: string,
+    userId: string,
+  ): Promise<{ pdfBuffer: Buffer; filename: string }> {
+    if (!VALID_TEMPLATES.includes(template as (typeof VALID_TEMPLATES)[number])) {
+      throw new BadRequestException('Invalid template');
+    }
+
+    if (!existsSync(SAMPLE_RESUME_JSON_PATH)) {
+      throw new NotFoundException('Sample resume JSON not found');
+    }
+
+    let sampleJson: ResumeData;
+    try {
+      sampleJson = JSON.parse(
+        readFileSync(SAMPLE_RESUME_JSON_PATH, 'utf-8'),
+      ) as ResumeData;
+    } catch {
+      throw new BadRequestException('Failed to parse sample resume JSON');
+    }
+
+    const pdfBuffer = await this.generatePdfFromJson(
+      sampleJson,
+      template,
+      userId,
+    );
+
+    const sanitizedName = (sampleJson.name || 'resume')
+      .replace(/[^a-zA-Z0-9\s-]/g, '')
+      .trim()
+      .replace(/\s+/g, '_');
+    const filename = `${sanitizedName}_${template}_preview.pdf`;
+
+    return { pdfBuffer, filename };
+  }
+
   async generatePdfFromJson(
     json: ResumeData,
     userTemplate?: string,
+    userId?: string,
   ): Promise<Buffer> {
-    const resumeData = { ...json };
+    const resumeData: ResumeData = {
+      ...json,
+      skills: Array.isArray(json.skills) ? json.skills : [],
+    };
     if (resumeData.cover_letter) {
       delete resumeData.cover_letter;
     }
     if (resumeData.contact?.email?.includes('](mailto:')) {
       resumeData.contact.email = this.extractEmail(resumeData.contact.email);
     }
-    return this.generatePDF(resumeData, userTemplate || 'template1');
+    const pdfSettings = userId
+      ? await this.getResumePdfSettingsForUser(userId)
+      : DEFAULT_RESUME_PDF_SETTINGS;
+    return this.generatePDF(
+      resumeData,
+      userTemplate || 'template1',
+      pdfSettings,
+    );
+  }
+
+  private async getResumePdfSettingsForUser(
+    userId: string,
+  ): Promise<ResumePdfSettings> {
+    const resumeSettings = await this.usersService.getResumeSettings(userId);
+    return getResumePdfSettings(resumeSettings);
   }
 
   private async generatePDF(
     data: ResumeData,
     templateName: string = 'template1',
+    pdfSettings: ResumePdfSettings = DEFAULT_RESUME_PDF_SETTINGS,
   ): Promise<Buffer> {
     // Select template based on templateName
     // For now, only template1 is available, but this structure allows for easy expansion
     if (templateName === 'template1') {
-      const template = new ResumePDFTemplate1(data);
+      const template = new ResumePDFTemplate1(data, pdfSettings);
       return template.generate();
     } else if (templateName === 'template2') {
-      const template = new ResumePDFTemplate2(data);
+      const template = new ResumePDFTemplate2(data, pdfSettings);
       return template.generate();
     } else if (templateName === 'template3') {
-      const template = new ResumePDFTemplate3(data);
+      const template = new ResumePDFTemplate3(data, pdfSettings);
       return template.generate();
     } else if (templateName === 'template4') {
-      const template = new ResumePDFTemplate4(data);
+      const template = new ResumePDFTemplate4(data, pdfSettings);
       return template.generate();
     } else if (templateName === 'template5') {
-      const template = new ResumePDFTemplate5(data);
+      const template = new ResumePDFTemplate5(data, pdfSettings);
       return template.generate();
     }
 
     // Default to template1 if template not found
-    const template = new ResumePDFTemplate1(data);
+    const template = new ResumePDFTemplate1(data, pdfSettings);
     return template.generate();
   }
 
@@ -3219,21 +3306,19 @@ CANDIDATE_BACKGROUND:
   async downloadResumePDF(
     id: string,
     userId: string,
-    userTemplate?: string,
   ): Promise<Buffer> {
     const resume = await this.resumeModel.findOne({ _id: id, userId }).exec();
 
     if (!resume) throw new NotFoundException(`Resume with id ${id} not found`);
 
+    const user = await this.usersService.findById(String(userId));
     const jsonData = this.getStoredResumeJson(resume);
 
-    // Generate PDF from the JSON data using user's template
-    const pdfBuffer = await this.generatePDF(
+    return this.generatePdfFromJson(
       jsonData,
-      userTemplate || 'template1',
+      user.template || 'template1',
+      String(userId),
     );
-
-    return pdfBuffer;
   }
 
   async downloadResumeJSON(id: string, userId: string): Promise<string> {

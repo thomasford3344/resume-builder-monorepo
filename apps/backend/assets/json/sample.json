@@ -1,0 +1,278 @@
+{
+  "name": "Thomas Ford",
+  "title": "Senior Backend Engineer",
+  "contact": {
+    "address": "Lubbock, TX 79403",
+    "email": "thomasfordwe@gmail.com",
+    "phone": "(940) 331 7571",
+    "linkedin": ""
+  },
+  "summary": "Senior Backend Engineer with 8+ years building scalable, highly available Python and Node.js services on AWS for healthcare and consumer-facing platforms. Designs maintainable, well-tested APIs and event-driven architectures while owning full delivery cycles from design through production monitoring. Reduced patient-service processing time by 24% and stabilized critical care journeys at 99.94% availability by applying sound architectural patterns, disciplined database optimization, and close cross-functional alignment with product, science, and operations stakeholders.",
+  "skills": [
+    {
+      "category": "Languages",
+      "items": [
+        "Python",
+        "JavaScript",
+        "TypeScript",
+        "C#",
+        "SQL",
+        "Bash",
+        "JSON",
+        "YAML"
+      ]
+    },
+    {
+      "category": "Backend",
+      "items": [
+        "Python",
+        "FastAPI",
+        "Node.js",
+        "Express.js",
+        "REST APIs",
+        "Event-Driven Architecture",
+        "Microservices",
+        "Asynchronous Processing"
+      ]
+    },
+    {
+      "category": "Frontend",
+      "items": [
+        "React",
+        "TypeScript",
+        "Redux",
+        "Material UI",
+        "HTML5",
+        "CSS3",
+        "Accessible Forms",
+        "Responsive Web Applications"
+      ]
+    },
+    {
+      "category": "Cloud & DevOps",
+      "items": [
+        "AWS",
+        "Docker",
+        "Kubernetes",
+        "GitHub Actions",
+        "CI/CD",
+        "CloudWatch",
+        "Datadog",
+        "Infrastructure as Code"
+      ]
+    },
+    {
+      "category": "Database",
+      "items": [
+        "PostgreSQL",
+        "SQL Server",
+        "MySQL",
+        "Redis",
+        "SQL Query Optimization",
+        "Database Schema Design",
+        "Data Modeling",
+        "Audit Logging"
+      ]
+    },
+    {
+      "category": "AI & Automation",
+      "items": [
+        "LLM Prototyping",
+        "AI-Augmented Development",
+        "Data Labeling Workflows",
+        "Dataset Generation",
+        "Model Training Pipelines",
+        "Automated Testing",
+        "Workflow Automation",
+        "Event-Driven Pipelines"
+      ]
+    },
+    {
+      "category": "Testing",
+      "items": [
+        "Jest",
+        "Cypress",
+        "xUnit",
+        "Postman Integration Testing",
+        "Unit Testing",
+        "Integration Testing",
+        "End-to-End Testing",
+        "Automated Regression Testing"
+      ]
+    },
+    {
+      "category": "Tools",
+      "items": [
+        "Git",
+        "Jira",
+        "Swagger/OpenAPI",
+        "Postman",
+        "Jest",
+        "Cypress",
+        "LLM Prototyping",
+        "xUnit"
+      ]
+    },
+    {
+      "category": "Methodology",
+      "items": [
+        "Agile",
+        "Scrum",
+        "Design Patterns",
+        "SOLID Principles",
+        "Test-Driven Development",
+        "API-First Design",
+        "Security-by-Design",
+        "Privacy-by-Design"
+      ]
+    },
+    {
+      "category": "Mobile",
+      "items": [
+        "Wearable Data Integration",
+        "Device SDK Integration",
+        "Sensor Data Pipelines",
+        "Health Data APIs",
+        "Cross-Platform API Design",
+        "Real-Time Data Streaming",
+        "BLE Data Handling",
+        "Mobile Backend Services"
+      ]
+    },
+    {
+      "category": "Industry",
+      "items": [
+        "HIPAA Compliance",
+        "Privacy-by-Design",
+        "RBAC",
+        "Security Audits",
+        "Regulatory Standards",
+        "EHR Integration",
+        "Data Labeling Workflows",
+        "Wearable Technology Platforms"
+      ]
+    }
+  ],
+  "experience": [
+    {
+      "title": "Senior Backend Engineer",
+      "company": "CVS Health",
+      "date_range": "05/2023 - Present",
+      "job_type": "Remote",
+      "responsibilities": [
+        "Architected Python and Node.js FastAPI services across 12 patient-facing workflows — including scheduling, virtual care, reminders, and payments — owning full delivery from design through production monitoring with CloudWatch and Datadog on AWS.",
+        "Directed end-to-end technical ownership of 7 CVS Virtual Care and MinuteClinic® backend feature areas, translating regulatory and privacy requirements into HIPAA-aligned, RBAC-enforced APIs deployed across containerized AWS environments serving roughly 4 million monthly active users.",
+        "Orchestrated architectural improvements across 4 engineering workstreams using Docker, Kubernetes, and GitHub Actions CI/CD, establishing maintainability standards and documented OpenAPI contracts that reduced onboarding ramp for 3 new engineers by about 40%."
+      ],
+      "achievements": [
+        "Increased appointment-flow completion by 31% by redesigning Python eligibility and registration service logic, eliminating ambiguous state transitions and instrumenting abandonment points with structured CloudWatch metrics.",
+        "Reduced patient-service processing time by 24% by unifying scheduling, prescription, and benefits data behind optimized PostgreSQL schemas and Redis caching layers, cutting median API latency to sub-200ms.",
+        "Stabilized high-traffic care journeys at 99.94% uptime by re-architecting failure-handling, health-check, and circuit-breaker patterns across containerized Python microservices on AWS ECS.",
+        "Automated same-day reminder and cancellation pipelines through event-driven asynchronous workers, lowering manual outreach volume by 18% for MinuteClinic® operations teams without adding headcount.",
+        "Introduced 6 LLM-assisted tooling prototypes for test generation, support summarization, and workflow analysis, cutting selected investigation and triage cycles by roughly 30%."
+      ],
+      "skills": [
+        "Python",
+        "FastAPI",
+        "Node.js",
+        "PostgreSQL",
+        "AWS",
+        "Docker",
+        "Redis",
+        "Event-Driven Architecture"
+      ]
+    },
+    {
+      "title": "Senior Software Engineer",
+      "company": "BRIDGE Hospice",
+      "date_range": "02/2021 - 05/2023",
+      "job_type": "On-site",
+      "responsibilities": [
+        "Led backend architecture for 9 patient-intake and care-coordination services using Python, C#/.NET, and REST APIs, designing scalable database schemas across SQL Server that handled 11 integrated data sources for clinical and billing stakeholders.",
+        "Unified 5 legacy EHR, document, billing, and notification integrations behind versioned, Swagger-documented service contracts, enabling product and operations teams to ship intake changes through a single auditable workflow with full HIPAA-aligned audit logging.",
+        "Established release ownership for 3 production backend applications through Jenkins CI/CD pipelines, role-based access controls, and quarterly security review cycles conducted with compliance, clinical, and engineering leadership."
+      ],
+      "achievements": [
+        "Streamlined referral validation and task-routing logic to cut intake handoff time in half, preserving nurse review checkpoints and all PHI-handling controls required under HIPAA regulatory standards.",
+        "Reduced peak SQL Server response time by 38% through query restructuring, composite index tuning, and background-job rescheduling across care-coordination dashboard endpoints serving 200+ daily clinical users.",
+        "Eliminated 42% of repeat production defects by expanding xUnit, Postman integration, and Cypress end-to-end coverage across admission, document-processing, and provider-communication service paths.",
+        "Modernized 14 backend endpoints and their corresponding React screens, improving first-pass intake completion by 27% across clinical and administrative user cohorts.",
+        "Resolved one-third of admission-status escalations by exposing cleaner workflow-state APIs and operational alert hooks to coordinators and product owners, reducing mean time to resolution by about 35%."
+      ],
+      "skills": [
+        "Python",
+        "C#/.NET",
+        "REST APIs",
+        "SQL Server",
+        "Jenkins",
+        "RBAC",
+        "Audit Logging",
+        "EHR Integration"
+      ]
+    },
+    {
+      "title": "Software Engineer",
+      "company": "UMC Physicians",
+      "date_range": "07/2018 - 12/2020",
+      "job_type": "On-site",
+      "responsibilities": [
+        "Designed and deployed 8 MyTeamCare patient-portal backend capabilities — covering online scheduling, paperless registration, provider messaging, and medical-record access — using Python, JavaScript, REST APIs, and PostgreSQL with acceptance criteria co-authored by physicians, front-desk staff, and infrastructure teams.",
+        "Managed integration scope for 16 EHR and patient-management data mappings, building schema validation and transformation layers that standardized data contracts across 3 upstream clinical systems for 2 portal release trains.",
+        "Standardized backend delivery through Git-based review workflows, automated API documentation, Linux deployment runbooks, and integration test suites that covered roughly 80% of critical patient-data endpoints."
+      ],
+      "achievements": [
+        "Transformed appointment booking into a single-session guided backend flow, raising successful self-service scheduling by 33% without requiring additional call-center staffing.",
+        "Accelerated provider-directory search APIs to sub-second median response time by restructuring SQL query plans, applying targeted index changes, and introducing query-result caching for high-frequency lookups.",
+        "Implemented secure session, authorization, and server-side input-validation controls that reduced account-access incidents by approximately 20% across patient and staff user segments.",
+        "Simplified paperless registration service logic to cut incomplete form submissions by 22%, improving data completeness for downstream billing and clinical record systems.",
+        "Revitalized 11 legacy portal backend modules, decreasing release-related regressions by 29% by introducing reusable service components and expanding integration-test coverage across data-sensitive patient workflows."
+      ],
+      "skills": [
+        "Python",
+        "JavaScript",
+        "REST APIs",
+        "PostgreSQL",
+        "SQL Query Optimization",
+        "Linux",
+        "Swagger/OpenAPI",
+        "HIPAA Compliance"
+      ]
+    },
+    {
+      "title": "Junior Software Engineer",
+      "company": "GermBlast",
+      "date_range": "07/2016 - 06/2018",
+      "job_type": "On-site",
+      "responsibilities": [
+        "Developed 10 scheduling and field-operations backend modules using JavaScript, C#/.NET, and MySQL, delivering validated appointment, customer, and service-record workflows across 3 internal product areas with direct input from dispatchers and operations leaders.",
+        "Controlled data integrity across 15 server-side validation and permission rules, co-defining acceptance criteria with operations stakeholders to ensure consistent enforcement across customer, appointment, and service-record data models.",
+        "Initiated a biweekly backend release cadence through Git-based code reviews, unit-test suites, and structured deployment checklists that reduced unplanned rollbacks by about 25% over the role's final year."
+      ],
+      "achievements": [
+        "Launched automated email notification services across every appointment lifecycle state, reducing missed service visits by 17% for field teams and end customers.",
+        "Generated 13 operational reporting endpoints for invoicing, service history, and technician utilization, shortening weekly reconciliation cycles by roughly 35% for operations managers.",
+        "Solved recurring scheduling-conflict defects by introducing database-level constraints and deterministic assignment rules, lowering duplicate booking incidents by 26%.",
+        "Improved dashboard query performance by 41% by rewriting MySQL joins, adding targeted indexes, and eliminating unnecessary data retrieval across high-traffic service-location views.",
+        "Expanded role-based permission enforcement across 19 user profiles, cutting unauthorized record-change incidents to zero throughout the final 12 months of the engagement."
+      ],
+      "skills": [
+        "JavaScript",
+        "C#/.NET",
+        "MySQL",
+        "Database Schema Design",
+        "REST APIs",
+        "Git",
+        "Unit Testing",
+        "Role-Based Access Control"
+      ]
+    }
+  ],
+  "education": [
+    {
+      "degree": "Bachelor of Science in Computer Science",
+      "institution": "University of Kansas",
+      "location": "Lawrence, KS",
+      "date_range": "08/2012 - 05/2016"
+    }
+  ]
+}
