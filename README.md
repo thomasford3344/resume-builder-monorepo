@@ -42,9 +42,10 @@ Each user adds their own OpenAI and Anthropic API keys in **Profile** settings. 
 
 ```env
 VITE_API_BASE_URL=http://localhost:3000
+VITE_SOCKET_URL=http://localhost:3000
 ```
 
-Leave `VITE_API_BASE_URL` empty during local dev to use the Vite proxy to `http://localhost:3000`.
+Leave `VITE_API_BASE_URL` empty during local dev to use the Vite proxy to `http://localhost:3000`. Set `VITE_SOCKET_URL` when the socket server is on a different host (e.g. a LAN IP).
 
 ## Development
 

@@ -1,6 +1,11 @@
 import { io, type Socket } from "socket.io-client";
 
-export const socket: Socket = io("http://192.168.4.175:3000", {
+const socketUrl =
+  import.meta.env.VITE_SOCKET_URL ||
+  import.meta.env.VITE_API_BASE_URL ||
+  "http://localhost:3000";
+
+export const socket: Socket = io(socketUrl, {
   withCredentials: true,
   transports: ["websocket"],
   autoConnect: true,
