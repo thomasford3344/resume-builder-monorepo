@@ -59,7 +59,7 @@ const router = createBrowserRouter([
           { path: "resumes", element: <Resumes /> }, // '/resumes'
           { path: "resumes/new", element: <CreateResume /> }, // '/resumes/new'
           { path: "fromjson", element: <FromJson /> }, // '/fromjson'
-          { path: "profile", element: <Profile /> }, // '/profile'
+          { path: "settings", element: <Profile /> }, // '/settings'
         ],
       },
     ],

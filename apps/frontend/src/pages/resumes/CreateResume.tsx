@@ -191,8 +191,8 @@ const CreateResume: React.FC = () => {
           severity="warning"
           sx={{ mb: 2 }}
           action={
-            <Button color="inherit" size="small" component={Link} to="/profile">
-              Go to Profile
+            <Button color="inherit" size="small" component={Link} to="/settings">
+              Go to Settings
             </Button>
           }
         >
@@ -205,8 +205,8 @@ const CreateResume: React.FC = () => {
           severity="warning"
           sx={{ mb: 2 }}
           action={
-            <Button color="inherit" size="small" component={Link} to="/profile">
-              Go to Profile
+            <Button color="inherit" size="small" component={Link} to="/settings">
+              Go to Settings
             </Button>
           }
         >
@@ -221,8 +221,8 @@ const CreateResume: React.FC = () => {
           onClose={() => setSubmitError(null)}
           action={
             submitError.toLowerCase().includes("profile") ? (
-              <Button color="inherit" size="small" component={Link} to="/profile">
-                Go to Profile
+              <Button color="inherit" size="small" component={Link} to="/settings">
+                Go to Settings
               </Button>
             ) : undefined
           }

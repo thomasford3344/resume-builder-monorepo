@@ -38,7 +38,7 @@ import {
   QuestionAnswer as QuestionAnswerIcon,
   Visibility as VisibilityIcon,
   ContentCopy as ContentCopyIcon,
-  Person as PersonIcon,
+  Settings as SettingsIcon,
   Logout as LogoutIcon,
   LightMode as LightModeIcon,
   DarkMode as DarkModeIcon,
@@ -215,9 +215,9 @@ const Resumes: React.FC = () => {
     setAvatarMenuAnchor(null);
   };
 
-  const handleProfileClick = () => {
+  const handleSettingsClick = () => {
     handleAvatarMenuClose();
-    navigate("/profile");
+    navigate("/settings");
   };
 
   const handleLogoutClick = () => {
@@ -716,11 +716,11 @@ const Resumes: React.FC = () => {
             anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
             transformOrigin={{ vertical: "top", horizontal: "right" }}
           >
-            <MenuItem onClick={handleProfileClick}>
+            <MenuItem onClick={handleSettingsClick}>
               <ListItemIcon>
-                <PersonIcon fontSize="small" />
+                <SettingsIcon fontSize="small" />
               </ListItemIcon>
-              <ListItemText>Profile</ListItemText>
+              <ListItemText>Settings</ListItemText>
             </MenuItem>
             <Divider />
             {mode === "dark" ? (
