@@ -30,6 +30,8 @@ export interface UserResponse {
     | "template5";
   instructions?: string;
   questionsPrompt?: string;
+  hasOpenaiApiKey?: boolean;
+  hasAnthropicApiKey?: boolean;
 }
 
 export interface CreateUserDto {
@@ -67,8 +69,17 @@ export interface UpdateProfileDto {
   template?: string;
   instructions?: string;
   questionsPrompt?: string;
+  openaiApiKey?: string;
+  anthropicApiKey?: string;
+  clearOpenaiApiKey?: boolean;
+  clearAnthropicApiKey?: boolean;
   currentPassword?: string;
   newPassword?: string;
+}
+
+export interface RevealedApiKeysResponse {
+  openaiApiKey: string | null;
+  anthropicApiKey: string | null;
 }
 
 export interface RegisterDto {
@@ -138,5 +149,13 @@ export const getProfile = async () => {
 
 export const updateProfile = async (data: UpdateProfileDto) => {
   const res = await api.put<UserResponse>("/api/users/profile", data);
+  return res.data;
+};
+
+export const revealApiKeys = async (currentPassword: string) => {
+  const res = await api.post<RevealedApiKeysResponse>(
+    "/api/users/profile/reveal-api-keys",
+    { currentPassword },
+  );
   return res.data;
 };

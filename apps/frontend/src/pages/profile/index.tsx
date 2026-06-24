@@ -12,12 +12,47 @@ import {
   InputLabel,
   MenuItem,
   Select,
+  IconButton,
+  InputAdornment,
 } from "@mui/material";
+import {
+  Visibility as VisibilityIcon,
+  VisibilityOff as VisibilityOffIcon,
+} from "@mui/icons-material";
 import { Link } from "react-router";
 import { toast } from "react-toastify";
 
-import { getProfile, updateProfile, type UserResponse, type UpdateProfileDto } from "../../services/userService";
+import {
+  getProfile,
+  updateProfile,
+  revealApiKeys,
+  type UserResponse,
+  type UpdateProfileDto,
+} from "../../services/userService";
 import { resizableMultilineSx } from "../../constants/textFieldStyles";
+import { alpha } from "@mui/material/styles";
+
+const savedApiKeyFieldSx = {
+  "& .MuiOutlinedInput-root": {
+    bgcolor: (theme: { palette: { success: { main: string } } }) =>
+      alpha(theme.palette.success.main, 0.16),
+    "& fieldset": {
+      borderColor: "success.main",
+      borderWidth: 2,
+    },
+    "&:hover fieldset": {
+      borderColor: "success.dark",
+    },
+    "&.Mui-focused fieldset": {
+      borderColor: "success.dark",
+    },
+  },
+  "& .MuiInputBase-input::placeholder": {
+    color: "success.main",
+    opacity: 1,
+    fontWeight: 700,
+  },
+};
 
 const Profile: React.FC = () => {
   const [user, setUser] = React.useState<UserResponse | null>(null);
@@ -28,10 +63,23 @@ const Profile: React.FC = () => {
     template: "",
     instructions: "",
     questionsPrompt: "",
+    openaiApiKey: "",
+    anthropicApiKey: "",
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
   });
+  const [clearOpenaiApiKey, setClearOpenaiApiKey] = React.useState(false);
+  const [clearAnthropicApiKey, setClearAnthropicApiKey] = React.useState(false);
+  const [verifyPassword, setVerifyPassword] = React.useState("");
+  const [keysRevealed, setKeysRevealed] = React.useState(false);
+  const [revealingKeys, setRevealingKeys] = React.useState(false);
+  const [showRevealedKeys, setShowRevealedKeys] = React.useState(true);
+  const [revealedSnapshot, setRevealedSnapshot] = React.useState<{
+    openai: string | null;
+    anthropic: string | null;
+  } | null>(null);
+  const [apiKeysError, setApiKeysError] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const templateOptions = [...Array(5)].map((_, index) => ({
     value: `template${index + 1}`,
@@ -52,10 +100,19 @@ const Profile: React.FC = () => {
         template: profile.template || "template1",
         instructions: profile.instructions || "",
         questionsPrompt: profile.questionsPrompt || "",
+        openaiApiKey: "",
+        anthropicApiKey: "",
         currentPassword: "",
         newPassword: "",
         confirmPassword: "",
       });
+      setClearOpenaiApiKey(false);
+      setClearAnthropicApiKey(false);
+      setVerifyPassword("");
+      setKeysRevealed(false);
+      setRevealedSnapshot(null);
+      setShowRevealedKeys(true);
+      setApiKeysError(null);
     } catch (error) {
       console.error("Failed to load profile:", error);
       toast.error("Failed to load profile");
@@ -78,7 +135,62 @@ const Profile: React.FC = () => {
       ...prev,
       "template": option === "" ? "template1" : option
     }));
-  }
+  };
+
+  const handleHideApiKeys = () => {
+    setKeysRevealed(false);
+    setRevealedSnapshot(null);
+    setVerifyPassword("");
+    setShowRevealedKeys(true);
+    setApiKeysError(null);
+    setFormData((prev) => ({
+      ...prev,
+      openaiApiKey: "",
+      anthropicApiKey: "",
+    }));
+  };
+
+  const handleRevealApiKeys = async () => {
+    if (!verifyPassword) {
+      setApiKeysError("Enter your current password to view API keys");
+      return;
+    }
+
+    try {
+      setRevealingKeys(true);
+      setApiKeysError(null);
+      const keys = await revealApiKeys(verifyPassword);
+      setRevealedSnapshot({
+        openai: keys.openaiApiKey,
+        anthropic: keys.anthropicApiKey,
+      });
+      setFormData((prev) => ({
+        ...prev,
+        openaiApiKey: keys.openaiApiKey || "",
+        anthropicApiKey: keys.anthropicApiKey || "",
+      }));
+      setKeysRevealed(true);
+      setShowRevealedKeys(true);
+      toast.success("API keys revealed");
+    } catch {
+      setApiKeysError("Incorrect password. Could not reveal API keys.");
+      toast.error("Failed to reveal API keys");
+    } finally {
+      setRevealingKeys(false);
+    }
+  };
+
+  const isOpenaiKeyChanged =
+    clearOpenaiApiKey ||
+    (formData.openaiApiKey.length > 0 &&
+      (!revealedSnapshot ||
+        formData.openaiApiKey !== (revealedSnapshot.openai || "")));
+
+  const isAnthropicKeyChanged =
+    clearAnthropicApiKey ||
+    (formData.anthropicApiKey.length > 0 &&
+      (!revealedSnapshot ||
+        formData.anthropicApiKey !== (revealedSnapshot.anthropic || "")));
 
   const handleSave = async () => {
     try {
@@ -109,6 +221,14 @@ const Profile: React.FC = () => {
         template: formData.template,
         instructions: formData.instructions,
         questionsPrompt: formData.questionsPrompt,
+        ...(isOpenaiKeyChanged && formData.openaiApiKey && {
+          openaiApiKey: formData.openaiApiKey,
+        }),
+        ...(isAnthropicKeyChanged && formData.anthropicApiKey && {
+          anthropicApiKey: formData.anthropicApiKey,
+        }),
+        ...(clearOpenaiApiKey && { clearOpenaiApiKey: true }),
+        ...(clearAnthropicApiKey && { clearAnthropicApiKey: true }),
         ...(formData.newPassword && {
           currentPassword: formData.currentPassword,
           newPassword: formData.newPassword,
@@ -133,11 +253,13 @@ const Profile: React.FC = () => {
       formData.name !== (user.name || "") ||
       formData.template !== (user.template || "") ||
       formData.instructions !== (user.instructions || "") ||
-      formData.questionsPrompt !== (user.questionsPrompt || "")
+      formData.questionsPrompt !== (user.questionsPrompt || "") ||
+      isOpenaiKeyChanged ||
+      isAnthropicKeyChanged
     );
     const passwordChanged = formData.newPassword.length > 0;
     return profileChanged || passwordChanged;
-  }, [formData, user]);
+  }, [formData, user, isOpenaiKeyChanged, isAnthropicKeyChanged]);
 
   if (loading) {
     return (
@@ -219,6 +341,216 @@ const Profile: React.FC = () => {
             helperText="This prompt is used when generating answers to questions"
             sx={resizableMultilineSx}
           />
+
+          <Divider sx={{ my: 2 }} />
+
+          <Typography variant="h6" gutterBottom>
+            API Keys
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+            Your API keys are encrypted and stored securely. They are used only
+            for your resume generation requests.
+          </Typography>
+
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={2}
+            alignItems="flex-start"
+          >
+            <TextField
+              label="Current Password"
+              type="password"
+              value={verifyPassword}
+              onChange={(e) => {
+                setVerifyPassword(e.target.value);
+                setApiKeysError(null);
+              }}
+              fullWidth
+              variant="outlined"
+              size="small"
+              helperText="Required to view saved API keys"
+              disabled={keysRevealed}
+            />
+            <Stack direction="row" spacing={1} sx={{ flexShrink: 0 }}>
+              {!keysRevealed ? (
+                <Button
+                  variant="outlined"
+                  color="secondary"
+                  size="small"
+                  onClick={handleRevealApiKeys}
+                  disabled={
+                    revealingKeys ||
+                    (!user.hasOpenaiApiKey && !user.hasAnthropicApiKey)
+                  }
+                  sx={{ height: 40 }}
+                >
+                  {revealingKeys ? "Verifying..." : "Show API Keys"}
+                </Button>
+              ) : (
+                <Button
+                  variant="outlined"
+                  color="secondary"
+                  size="small"
+                  onClick={handleHideApiKeys}
+                  sx={{ height: 40 }}
+                >
+                  Hide Keys
+                </Button>
+              )}
+            </Stack>
+          </Stack>
+
+          {apiKeysError && (
+            <Alert severity="error">{apiKeysError}</Alert>
+          )}
+
+          {keysRevealed && (
+            <Alert severity="success">
+              API keys are visible below. Hide them when you are done reviewing.
+            </Alert>
+          )}
+
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems="flex-start">
+            <TextField
+              label="OpenAI API Key"
+              type={keysRevealed && showRevealedKeys ? "text" : "password"}
+              value={formData.openaiApiKey}
+              onChange={(e) => {
+                setClearOpenaiApiKey(false);
+                setFormData((prev) => ({
+                  ...prev,
+                  openaiApiKey: e.target.value,
+                }));
+              }}
+              fullWidth
+              variant="outlined"
+              size="small"
+              placeholder={
+                user.hasOpenaiApiKey && !clearOpenaiApiKey && !keysRevealed
+                  ? "Key saved (enter new key to replace)"
+                  : "sk-..."
+              }
+              helperText="Used for GPT resume generation"
+              sx={
+                user.hasOpenaiApiKey &&
+                !clearOpenaiApiKey &&
+                !keysRevealed &&
+                !formData.openaiApiKey
+                  ? savedApiKeyFieldSx
+                  : undefined
+              }
+              InputProps={
+                keysRevealed
+                  ? {
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton
+                            size="small"
+                            onClick={() =>
+                              setShowRevealedKeys((prev) => !prev)
+                            }
+                            edge="end"
+                            aria-label={
+                              showRevealedKeys ? "Hide API key" : "Show API key"
+                            }
+                          >
+                            {showRevealedKeys ? (
+                              <VisibilityOffIcon fontSize="small" />
+                            ) : (
+                              <VisibilityIcon fontSize="small" />
+                            )}
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                    }
+                  : undefined
+              }
+            />
+            <Button
+              variant="outlined"
+              color="secondary"
+              size="small"
+              disabled={!user.hasOpenaiApiKey && !formData.openaiApiKey}
+              onClick={() => {
+                setFormData((prev) => ({ ...prev, openaiApiKey: "" }));
+                setClearOpenaiApiKey(true);
+              }}
+              sx={{ height: 40, flexShrink: 0 }}
+            >
+              Clear
+            </Button>
+          </Stack>
+
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems="flex-start">
+            <TextField
+              label="Anthropic API Key"
+              type={keysRevealed && showRevealedKeys ? "text" : "password"}
+              value={formData.anthropicApiKey}
+              onChange={(e) => {
+                setClearAnthropicApiKey(false);
+                setFormData((prev) => ({
+                  ...prev,
+                  anthropicApiKey: e.target.value,
+                }));
+              }}
+              fullWidth
+              variant="outlined"
+              size="small"
+              placeholder={
+                user.hasAnthropicApiKey && !clearAnthropicApiKey && !keysRevealed
+                  ? "Key saved (enter new key to replace)"
+                  : "sk-ant-..."
+              }
+              helperText="Used for Claude resume generation"
+              sx={
+                user.hasAnthropicApiKey &&
+                !clearAnthropicApiKey &&
+                !keysRevealed &&
+                !formData.anthropicApiKey
+                  ? savedApiKeyFieldSx
+                  : undefined
+              }
+              InputProps={
+                keysRevealed
+                  ? {
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton
+                            size="small"
+                            onClick={() =>
+                              setShowRevealedKeys((prev) => !prev)
+                            }
+                            edge="end"
+                            aria-label={
+                              showRevealedKeys ? "Hide API key" : "Show API key"
+                            }
+                          >
+                            {showRevealedKeys ? (
+                              <VisibilityOffIcon fontSize="small" />
+                            ) : (
+                              <VisibilityIcon fontSize="small" />
+                            )}
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                    }
+                  : undefined
+              }
+            />
+            <Button
+              variant="outlined"
+              color="secondary"
+              size="small"
+              disabled={!user.hasAnthropicApiKey && !formData.anthropicApiKey}
+              onClick={() => {
+                setFormData((prev) => ({ ...prev, anthropicApiKey: "" }));
+                setClearAnthropicApiKey(true);
+              }}
+              sx={{ height: 40, flexShrink: 0 }}
+            >
+              Clear
+            </Button>
+          </Stack>
 
           <Divider sx={{ my: 2 }} />
 

@@ -32,10 +32,11 @@ npm install
 
 ```env
 DATABASE_URL=mongodb://localhost:27017/resumes
-OPENAI_API_KEY=your_openai_key
-ANTHROPIC_API_KEY=your_anthropic_key
+ENCRYPTION_KEY=your_32_byte_hex_encryption_key
 PORT=3000
 ```
+
+Each user adds their own OpenAI and Anthropic API keys in **Profile** settings. Keys are encrypted at rest in the database.
 
 3. (Optional) Configure the frontend in `apps/frontend/.env`:
 

@@ -3,10 +3,7 @@ export default () => ({
   database: {
     uri: process.env.DATABASE_URL,
   },
-  openai: {
-    apiKey: process.env.OPENAI_API_KEY,
-  },
-  anthropic: {
-    apiKey: process.env.ANTHROPIC_API_KEY,
+  encryption: {
+    key: process.env.ENCRYPTION_KEY,
   },
 });

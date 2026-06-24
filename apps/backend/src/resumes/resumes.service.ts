@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { ResumesGateway } from './resumes.gateway';
 import { Model } from 'mongoose';
@@ -18,6 +18,7 @@ import {
   ResumePDFTemplate5,
 } from './templates';
 import { OpenAIService } from '../openai/openai.service';
+import { UsersService } from '../users/users.service';
 
 @Injectable()
 export class ResumesService {
@@ -27,6 +28,7 @@ export class ResumesService {
     @InjectModel(Resume.name) private resumeModel: Model<Resume>,
     @InjectModel(User.name) private userModel: Model<User>,
     private openAIService: OpenAIService,
+    private usersService: UsersService,
     private readonly gateway: ResumesGateway
   ) {
     // Ensure uploads directory exists
@@ -37,6 +39,35 @@ export class ResumesService {
     if (!existsSync(this.uploadsDir)) {
       await mkdir(this.uploadsDir, { recursive: true });
     }
+  }
+
+  async validateApiKeyForGeneration(
+    userId: string,
+    aiModel: 'openai' | 'claude',
+  ): Promise<void> {
+    const keys = await this.usersService.getApiKeysForUser(userId);
+
+    if (aiModel === 'claude') {
+      if (!keys.anthropic?.trim()) {
+        throw new BadRequestException(
+          'No Anthropic API key configured. Add your Anthropic API key in Profile settings.',
+        );
+      }
+      return;
+    }
+
+    if (!keys.openai?.trim()) {
+      throw new BadRequestException(
+        'No OpenAI API key configured. Add your OpenAI API key in Profile settings.',
+      );
+    }
+  }
+
+  async markResumeFailed(resumeId: string, userId: string): Promise<void> {
+    await this.resumeModel
+      .updateOne({ _id: resumeId, userId }, { status: 'failed' })
+      .exec();
+    this.gateway.emitFailed(resumeId);
   }
 
   async create(
@@ -2745,11 +2776,13 @@ CANDIDATE_BACKGROUND:
     }
 
     // Call OpenAI API to generate the resume JSON (includes cover_letter)
+    const apiKeys = await this.usersService.getApiKeysForUser(userId);
     const { resumeJson, threadId } = await this.openAIService.generateResume(
       resume.jobDescription,
       instructions,
       (resume.aiModel as 'openai' | 'claude') || 'openai',
       resume.aiVersion || 'gpt-4.1-mini',
+      apiKeys,
     );
 
     // Extract cover letter from resume JSON and remove it from the JSON
@@ -2887,6 +2920,8 @@ CANDIDATE_BACKGROUND:
     // Use user's custom prompt if available, otherwise use default
     const questionsPrompt = user.questionsPrompt || undefined;
 
+    const apiKeys = await this.usersService.getApiKeysForUser(userId);
+
     // Call OpenAI service with optional custom prompt
     return await this.openAIService.parseAndAnswerQuestions(
       questionsText,
@@ -2895,6 +2930,7 @@ CANDIDATE_BACKGROUND:
       questionsPrompt,
       (aiModel as 'openai' | 'claude') || 'openai',
       aiVersion || 'gpt-4.1-mini',
+      apiKeys,
     );
   }
 

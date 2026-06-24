@@ -29,6 +29,12 @@ export class User {
 
   @Prop({ type: String, required: false })
   questionsPrompt?: string;
+
+  @Prop({ type: String, required: false, select: false })
+  encryptedOpenaiApiKey?: string;
+
+  @Prop({ type: String, required: false, select: false })
+  encryptedAnthropicApiKey?: string;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

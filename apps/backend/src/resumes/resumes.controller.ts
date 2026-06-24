@@ -98,6 +98,11 @@ export class ResumesController {
     res.setHeader('X-Accel-Buffering', 'no'); // Disable nginx buffering
 
     try {
+      await this.resumesService.validateApiKeyForGeneration(
+        req.user._id,
+        generateResumeDto.aiModel,
+      );
+
       // Create resume record with in_progress status first
       const resumeRecord = await this.resumesService.createInProgress(
         req.user._id,
@@ -129,14 +134,31 @@ export class ResumesController {
           generateResumeDto.industry,
         )
         .catch((error) => {
-          // Log error but don't throw since response is already sent
-          console.error('Error generating resume in background:', error);
+          const message =
+            error?.message || 'Failed to generate resume in background';
+          console.error('Error generating resume in background:', message);
+          void this.resumesService.markResumeFailed(
+            resumeRecord._id.toString(),
+            req.user._id,
+          );
         });
     } catch (error) {
+      const response =
+        typeof error?.getResponse === 'function'
+          ? error.getResponse()
+          : undefined;
+      const rawMessage =
+        (typeof response === 'object' && response !== null && 'message' in response
+          ? (response as { message?: string | string[] }).message
+          : undefined) || error?.message;
+      const message = Array.isArray(rawMessage)
+        ? rawMessage.join(', ')
+        : rawMessage || 'Failed to generate resume';
+
       res.write(
         `data: ${JSON.stringify({
           type: 'error',
-          message: error.message || 'Failed to generate resume',
+          message,
         })}\n\n`,
       );
       res.end();
