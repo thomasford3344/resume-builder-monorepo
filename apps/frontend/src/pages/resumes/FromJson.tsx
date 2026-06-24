@@ -16,8 +16,8 @@ import { useNavigate } from "react-router";
 import AiModelSelector from "../../components/resumes/AiModelSelector";
 import {
   type AiProvider,
-  DEFAULT_AI_PROVIDER,
-  DEFAULT_AI_VERSION,
+  DEFAULT_FROM_JSON_AI_PROVIDER,
+  DEFAULT_FROM_JSON_AI_VERSION,
 } from "../../constants/aiModels";
 import { resizableMultilineSx } from "../../constants/textFieldStyles";
 
@@ -46,8 +46,10 @@ type FormData = yup.InferType<typeof schema>;
 const FromJson: React.FC = () => {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [aiModel, setAiModel] = React.useState<AiProvider>(DEFAULT_AI_PROVIDER);
-  const [aiVersion, setAiVersion] = React.useState(DEFAULT_AI_VERSION);
+  const [aiModel, setAiModel] = React.useState<AiProvider>(
+    DEFAULT_FROM_JSON_AI_PROVIDER,
+  );
+  const [aiVersion, setAiVersion] = React.useState(DEFAULT_FROM_JSON_AI_VERSION);
 
   const {
     register,

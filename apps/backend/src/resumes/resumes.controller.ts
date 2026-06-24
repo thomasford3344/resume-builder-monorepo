@@ -192,6 +192,7 @@ export class ResumesController {
       'completed',
       fromJsonDto.aiModel,
       fromJsonDto.aiVersion,
+      'manual',
     );
     const sanitizedName = userName
       .replace(/[^a-zA-Z0-9\s-]/g, '')

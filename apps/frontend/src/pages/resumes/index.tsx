@@ -40,6 +40,7 @@ import {
   Person as PersonIcon,
   Logout as LogoutIcon,
 } from "@mui/icons-material";
+import { OpenAI, Claude } from "@lobehub/icons";
 import { Link, useNavigate } from "react-router";
 import {
   getResumes,
@@ -54,20 +55,99 @@ import { toast } from "react-toastify";
 import moment from "moment";
 import CoverLetterDialog from "../../components/resumes/CoverLetterDialog";
 import QuestionsDialog from "../../components/resumes/QuestionsDialog";
+import AiVersionBadge from "../../components/resumes/AiVersionBadge";
 import { useAuth } from "../../components/common/AuthContext";
 import { getProfile } from "../../services/userService";
 import { socket } from "./socket";
-import {
-  getModelLabel,
-  getProviderLabel,
-  type AiProvider,
-} from "../../constants/aiModels";
 
 const getLocalDateString = (date = new Date()) => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+};
+
+const countChipSx = {
+  "& .MuiChip-icon": {
+    marginLeft: "6px",
+    marginRight: "-2px",
+  },
+  "& .MuiChip-label": {
+    pl: 0.75,
+  },
+};
+
+const sourceChipSelectedSx = {
+  gpt: {
+    bgcolor: "primary.main",
+    color: "primary.contrastText",
+    borderColor: "primary.main",
+    fontWeight: 700,
+    boxShadow: 3,
+    "& .MuiChip-icon": {
+      color: "primary.contrastText",
+    },
+    "&:hover": {
+      bgcolor: "primary.dark",
+    },
+  },
+  claude: {
+    bgcolor: "#D97757",
+    color: "#fff",
+    borderColor: "#D97757",
+    fontWeight: 700,
+    boxShadow: 3,
+    "& .MuiChip-icon": {
+      color: "#fff",
+    },
+    "&:hover": {
+      bgcolor: "#C96A4D",
+    },
+  },
+  manual: {
+    bgcolor: "secondary.main",
+    color: "secondary.contrastText",
+    borderColor: "secondary.main",
+    fontWeight: 700,
+    boxShadow: 3,
+    "& .MuiChip-icon": {
+      color: "secondary.contrastText",
+    },
+    "&:hover": {
+      bgcolor: "secondary.dark",
+    },
+  },
+} as const;
+
+type ChipFilter =
+  | "completed"
+  | "in_progress"
+  | "failed"
+  | "gpt"
+  | "claude"
+  | "manual";
+
+const matchesChipFilter = (resume: ResumeResponse, filter: ChipFilter) => {
+  switch (filter) {
+    case "completed":
+      return resume.status === "completed";
+    case "in_progress":
+      return resume.status === "in_progress";
+    case "failed":
+      return resume.status === "failed";
+    case "manual":
+      return resume.generationSource === "manual";
+    case "gpt":
+      return (
+        resume.generationSource !== "manual" && resume.aiModel !== "claude"
+      );
+    case "claude":
+      return (
+        resume.generationSource !== "manual" && resume.aiModel === "claude"
+      );
+    default:
+      return true;
+  }
 };
 
 const Resumes: React.FC = () => {
@@ -91,6 +171,7 @@ const Resumes: React.FC = () => {
       endDate: today,
     };
   });
+  const [chipFilter, setChipFilter] = React.useState<ChipFilter | null>(null);
   const [coverLetterResumeId, setCoverLetterResumeId] = React.useState<
     string | null
   >(null);
@@ -257,25 +338,84 @@ const Resumes: React.FC = () => {
       endDate: "",
     };
     setFilters(emptyFilters);
+    setChipFilter(null);
+    setSelectedResumes(new Set());
     loadResumes(emptyFilters);
+  };
+
+  const handleChipFilterClick = (filter: ChipFilter) => {
+    setChipFilter((current) => (current === filter ? null : filter));
+    setSelectedResumes(new Set());
   };
 
   const resumeCounts = React.useMemo(() => {
     const completed = resumes.filter((r) => r.status === "completed").length;
     const inProgress = resumes.filter((r) => r.status === "in_progress").length;
     const failed = resumes.filter((r) => r.status === "failed").length;
-    const gpt = resumes.filter((r) => r.aiModel !== "claude").length;
-    const claude = resumes.filter((r) => r.aiModel === "claude").length;
+    const manual = resumes.filter((r) => r.generationSource === "manual").length;
+    const gpt = resumes.filter(
+      (r) => r.generationSource !== "manual" && r.aiModel !== "claude",
+    ).length;
+    const claude = resumes.filter(
+      (r) => r.generationSource !== "manual" && r.aiModel === "claude",
+    ).length;
 
     return {
       total: resumes.length,
       completed,
       inProgress,
       failed,
+      manual,
       gpt,
       claude,
     };
   }, [resumes]);
+
+  const filteredResumes = React.useMemo(() => {
+    if (!chipFilter) {
+      return resumes;
+    }
+
+    return resumes.filter((resume) => matchesChipFilter(resume, chipFilter));
+  }, [resumes, chipFilter]);
+
+  const getChipProps = (filter: ChipFilter) => ({
+    clickable: true,
+    onClick: () => handleChipFilterClick(filter),
+    variant: (chipFilter === filter ? "filled" : "outlined") as
+      | "filled"
+      | "outlined",
+    sx: { cursor: "pointer" },
+  });
+
+  const getSourceChipProps = (filter: "gpt" | "claude" | "manual") => {
+    const isSelected = chipFilter === filter;
+
+    return {
+      clickable: true,
+      onClick: () => handleChipFilterClick(filter),
+      variant: (isSelected ? "filled" : "outlined") as "filled" | "outlined",
+      color:
+        filter === "gpt"
+          ? ("primary" as const)
+          : filter === "manual"
+            ? ("secondary" as const)
+            : undefined,
+      sx: {
+        ...countChipSx,
+        cursor: "pointer",
+        borderWidth: isSelected ? 2 : 1,
+        transition: "all 0.15s ease",
+        ...(isSelected
+          ? sourceChipSelectedSx[filter]
+          : {
+              "&:hover": {
+                bgcolor: "action.hover",
+              },
+            }),
+      },
+    };
+  };
 
   const handleDownloadResume = async (id: string) => {
     try {
@@ -360,10 +500,10 @@ const Resumes: React.FC = () => {
   };
 
   const handleSelectAll = () => {
-    if (selectedResumes.size === resumes.length) {
+    if (selectedResumes.size === filteredResumes.length) {
       setSelectedResumes(new Set());
     } else {
-      setSelectedResumes(new Set(resumes.map((r) => r._id)));
+      setSelectedResumes(new Set(filteredResumes.map((r) => r._id)));
     }
   };
 
@@ -588,26 +728,28 @@ const Resumes: React.FC = () => {
               </Button>
             </Grid>
           </Grid>
-          <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 2 }}>
+          <Stack spacing={1} sx={{ mt: 2 }}>
             <Typography variant="body2" color="text.secondary">
               {loading
                 ? "Loading resumes..."
-                : `${resumeCounts.total} resume${resumeCounts.total !== 1 ? "s" : ""}`}
+                : chipFilter
+                  ? `${filteredResumes.length} of ${resumeCounts.total} resume${resumeCounts.total !== 1 ? "s" : ""}`
+                  : `${resumeCounts.total} resume${resumeCounts.total !== 1 ? "s" : ""}`}
             </Typography>
             {!loading && resumeCounts.total > 0 && (
-              <>
+              <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
                 <Chip
                   label={`${resumeCounts.completed} completed`}
                   size="small"
                   color="success"
-                  variant="outlined"
+                  {...getChipProps("completed")}
                 />
                 {resumeCounts.inProgress > 0 && (
                   <Chip
                     label={`${resumeCounts.inProgress} in progress`}
                     size="small"
                     color="info"
-                    variant="outlined"
+                    {...getChipProps("in_progress")}
                   />
                 )}
                 {resumeCounts.failed > 0 && (
@@ -615,20 +757,34 @@ const Resumes: React.FC = () => {
                     label={`${resumeCounts.failed} failed`}
                     size="small"
                     color="error"
-                    variant="outlined"
+                    {...getChipProps("failed")}
                   />
                 )}
                 <Chip
-                  label={`${resumeCounts.gpt} GPT`}
+                  icon={<OpenAI size={16} />}
+                  label={resumeCounts.gpt}
                   size="small"
-                  variant="outlined"
+                  {...getSourceChipProps("gpt")}
                 />
                 <Chip
-                  label={`${resumeCounts.claude} Claude`}
+                  icon={
+                    chipFilter === "claude" ? (
+                      <Claude size={16} color="#fff" />
+                    ) : (
+                      <Claude.Color size={16} />
+                    )
+                  }
+                  label={resumeCounts.claude}
                   size="small"
-                  variant="outlined"
+                  {...getSourceChipProps("claude")}
                 />
-              </>
+                <Chip
+                  icon={<CodeIcon sx={{ fontSize: 16 }} />}
+                  label={resumeCounts.manual}
+                  size="small"
+                  {...getSourceChipProps("manual")}
+                />
+              </Stack>
             )}
           </Stack>
         </Paper>
@@ -659,6 +815,19 @@ const Resumes: React.FC = () => {
             </Button>
           </Stack>
         </Paper>
+      ) : filteredResumes.length === 0 ? (
+        <Paper sx={{ p: 3, textAlign: "center" }}>
+          <Typography variant="body1" color="text.secondary" gutterBottom>
+            No resumes match the selected filter.
+          </Typography>
+          <Button
+            variant="outlined"
+            onClick={() => setChipFilter(null)}
+            sx={{ mt: 2 }}
+          >
+            Clear Filter
+          </Button>
+        </Paper>
       ) : (
         <TableContainer component={Paper}>
           <Table sx={{ minWidth: 650 }} size="small" aria-label="resumes table">
@@ -667,12 +836,12 @@ const Resumes: React.FC = () => {
                 <TableCell padding="checkbox">
                   <Checkbox
                     checked={
-                      resumes.length > 0 &&
-                      selectedResumes.size === resumes.length
+                      filteredResumes.length > 0 &&
+                      selectedResumes.size === filteredResumes.length
                     }
                     indeterminate={
                       selectedResumes.size > 0 &&
-                      selectedResumes.size < resumes.length
+                      selectedResumes.size < filteredResumes.length
                     }
                     onChange={handleSelectAll}
                   />
@@ -690,7 +859,7 @@ const Resumes: React.FC = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {resumes.map((resume) => (
+              {filteredResumes.map((resume) => (
                 <TableRow
                   key={resume._id}
                   sx={{
@@ -711,13 +880,12 @@ const Resumes: React.FC = () => {
                       ? getProviderLabel(resume.aiModel as AiProvider)
                       : "-"}
                   </TableCell> */}
-                  <TableCell align="center">
-                    {resume.aiModel && resume.aiVersion
-                      ? getModelLabel(
-                          resume.aiModel as AiProvider,
-                          resume.aiVersion,
-                        )
-                      : "gpt-4.1-mini"}
+                  <TableCell align="left">
+                    <AiVersionBadge
+                      aiModel={resume.aiModel}
+                      aiVersion={resume.aiVersion}
+                      generationSource={resume.generationSource}
+                    />
                   </TableCell>
                   <TableCell align="center">
                     {resume.jobDescription ? (

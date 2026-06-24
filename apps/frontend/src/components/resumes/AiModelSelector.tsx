@@ -1,5 +1,6 @@
 import * as React from "react";
 import {
+  Box,
   FormControl,
   InputLabel,
   Select,
@@ -8,12 +9,14 @@ import {
   ToggleButton,
   ToggleButtonGroup,
 } from "@mui/material";
+import { OpenAI, Claude } from "@lobehub/icons";
 import {
   type AiProvider,
   OPENAI_MODELS,
   CLAUDE_MODELS,
   DEFAULT_OPENAI_VERSION,
   DEFAULT_CLAUDE_VERSION,
+  getModelVersionLabel,
 } from "../../constants/aiModels";
 
 interface AiModelSelectorProps {
@@ -58,6 +61,7 @@ const AiModelSelector: React.FC<AiModelSelectorProps> = ({
           "& .MuiToggleButton-root": {
             textTransform: "none",
             px: 2,
+            gap: 0.75,
           },
           "& .MuiToggleButton-root.Mui-selected": {
             backgroundColor: "primary.main",
@@ -68,8 +72,18 @@ const AiModelSelector: React.FC<AiModelSelectorProps> = ({
           },
         }}
       >
-        <ToggleButton value="openai">Open AI</ToggleButton>
-        <ToggleButton value="claude">Claude</ToggleButton>
+        <ToggleButton value="openai">
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+            <OpenAI size={16} />
+            GPT
+          </Box>
+        </ToggleButton>
+        <ToggleButton value="claude">
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+            <Claude.Color size={16} />
+            Claude
+          </Box>
+        </ToggleButton>
       </ToggleButtonGroup>
       <FormControl
         size="small"
@@ -85,7 +99,7 @@ const AiModelSelector: React.FC<AiModelSelectorProps> = ({
         >
           {models.map((model) => (
             <MenuItem key={model.value} value={model.value}>
-              {model.label}
+              {getModelVersionLabel(aiModel, model.value)}
             </MenuItem>
           ))}
         </Select>

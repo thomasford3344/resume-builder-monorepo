@@ -89,6 +89,7 @@ export class ResumesService {
     status: string = 'completed',
     aiModel?: string,
     aiVersion?: string,
+    generationSource: 'ai' | 'manual' = 'ai',
   ) {
     const pdfBuffer = await this.generatePDF(json, userTemplate || 'template1');
 
@@ -102,6 +103,7 @@ export class ResumesService {
       status: status,
       aiModel,
       aiVersion,
+      generationSource,
     });
 
     const savedResume = await resume.save();

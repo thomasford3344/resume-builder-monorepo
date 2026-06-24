@@ -14,6 +14,7 @@
     "@emotion/styled": "^11.14.1",
     "@fontsource/roboto": "^5.2.8",
     "@hookform/resolvers": "^5.2.2",
+    "@lobehub/icons": "^5.10.0",
     "@mui/icons-material": "^7.3.4",
     "@mui/material": "^7.3.4",
     "axios": "^1.13.1",

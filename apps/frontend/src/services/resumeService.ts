@@ -27,6 +27,7 @@ export interface ResumeResponse {
   status?: 'in_progress' | 'completed' | 'failed';
   aiModel?: 'openai' | 'claude';
   aiVersion?: string;
+  generationSource?: 'ai' | 'manual';
   coverLetter?: string;
   answers?: Array<{ question: string; answer: string }>;
   createdAt?: string;
