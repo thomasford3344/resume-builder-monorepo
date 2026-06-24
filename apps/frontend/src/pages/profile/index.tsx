@@ -36,6 +36,11 @@ import {
   DEFAULT_COVER_LETTER_PROMPT,
   DEFAULT_QUESTIONS_PROMPT,
 } from "../../constants/aiPrompts";
+import AiModelSelector from "../../components/resumes/AiModelSelector";
+import {
+  type AiProvider,
+  resolveUserDefaultAi,
+} from "../../constants/aiModels";
 import { alpha } from "@mui/material/styles";
 
 const savedApiKeyFieldSx = {
@@ -82,6 +87,8 @@ const Profile: React.FC = () => {
     instructions: "",
     coverLetterPrompt: "",
     questionsPrompt: "",
+    defaultAiModel: "claude" as AiProvider,
+    defaultAiVersion: "claude-sonnet-4-6",
     openaiApiKey: "",
     anthropicApiKey: "",
     currentPassword: "",
@@ -114,6 +121,7 @@ const Profile: React.FC = () => {
     try {
       setLoading(true);
       const profile = await getProfile();
+      const defaultAi = resolveUserDefaultAi(profile);
       setUser(profile);
       setFormData({
         name: profile.name || "",
@@ -121,6 +129,8 @@ const Profile: React.FC = () => {
         instructions: profile.instructions || "",
         coverLetterPrompt: profile.coverLetterPrompt || "",
         questionsPrompt: profile.questionsPrompt || "",
+        defaultAiModel: defaultAi.aiModel,
+        defaultAiVersion: defaultAi.aiVersion,
         openaiApiKey: "",
         anthropicApiKey: "",
         currentPassword: "",
@@ -155,6 +165,14 @@ const Profile: React.FC = () => {
     setFormData(prev => ({
       ...prev,
       "template": option === "" ? "template1" : option
+    }));
+  };
+
+  const handleDefaultAiModelChange = (model: AiProvider, version: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      defaultAiModel: model,
+      defaultAiVersion: version,
     }));
   };
 
@@ -263,6 +281,8 @@ const Profile: React.FC = () => {
         instructions: formData.instructions,
         coverLetterPrompt: formData.coverLetterPrompt,
         questionsPrompt: formData.questionsPrompt,
+        defaultAiModel: formData.defaultAiModel,
+        defaultAiVersion: formData.defaultAiVersion,
         ...(isOpenaiKeyChanged && formData.openaiApiKey && {
           openaiApiKey: formData.openaiApiKey,
         }),
@@ -291,12 +311,15 @@ const Profile: React.FC = () => {
 
   const hasChanges = React.useMemo(() => {
     if (!user) return false;
+    const userDefaults = resolveUserDefaultAi(user);
     const profileChanged = (
       formData.name !== (user.name || "") ||
       formData.template !== (user.template || "") ||
       formData.instructions !== (user.instructions || "") ||
       formData.coverLetterPrompt !== (user.coverLetterPrompt || "") ||
       formData.questionsPrompt !== (user.questionsPrompt || "") ||
+      formData.defaultAiModel !== userDefaults.aiModel ||
+      formData.defaultAiVersion !== userDefaults.aiVersion ||
       isOpenaiKeyChanged ||
       isAnthropicKeyChanged
     );
@@ -377,6 +400,21 @@ const Profile: React.FC = () => {
               {previewingTemplate ? "Loading..." : "Preview"}
             </Button>
           </Stack>
+
+          <Box>
+            <Typography variant="subtitle1" gutterBottom>
+              Default AI Model
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+              Pre-selected provider and version on the Generate Resume page.
+            </Typography>
+            <AiModelSelector
+              aiModel={formData.defaultAiModel}
+              aiVersion={formData.defaultAiVersion}
+              onChange={handleDefaultAiModelChange}
+              disabled={saving}
+            />
+          </Box>
 
           <Divider sx={{ my: 2 }} />
 

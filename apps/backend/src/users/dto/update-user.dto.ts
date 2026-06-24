@@ -7,6 +7,8 @@ export class UpdateUserDto {
   instructions?: string;
   questionsPrompt?: string;
   coverLetterPrompt?: string;
+  defaultAiModel?: 'openai' | 'claude';
+  defaultAiVersion?: string;
   openaiApiKey?: string;
   anthropicApiKey?: string;
   clearOpenaiApiKey?: boolean;

@@ -48,6 +48,28 @@ export const DEFAULT_AI_VERSION =
     ? DEFAULT_OPENAI_VERSION
     : DEFAULT_CLAUDE_VERSION;
 
+export function resolveUserDefaultAi(
+  profile?: {
+    defaultAiModel?: AiProvider;
+    defaultAiVersion?: string;
+  } | null,
+): { aiModel: AiProvider; aiVersion: string } {
+  const aiModel =
+    profile?.defaultAiModel === "openai" || profile?.defaultAiModel === "claude"
+      ? profile.defaultAiModel
+      : DEFAULT_AI_PROVIDER;
+  const models = aiModel === "openai" ? OPENAI_MODELS : CLAUDE_MODELS;
+  const fallbackVersion =
+    aiModel === "openai" ? DEFAULT_OPENAI_VERSION : DEFAULT_CLAUDE_VERSION;
+  const candidate = profile?.defaultAiVersion;
+  const aiVersion =
+    candidate && models.some((model) => model.value === candidate)
+      ? candidate
+      : fallbackVersion;
+
+  return { aiModel, aiVersion };
+}
+
 export function getModelLabel(provider: AiProvider, version: string): string {
   const models = provider === "openai" ? OPENAI_MODELS : CLAUDE_MODELS;
   const match = models.find((m) => m.value === version);

@@ -20,8 +20,7 @@ import { Link, useNavigate } from "react-router";
 import AiModelSelector from "../../components/resumes/AiModelSelector";
 import {
   type AiProvider,
-  DEFAULT_AI_PROVIDER,
-  DEFAULT_AI_VERSION,
+  resolveUserDefaultAi,
 } from "../../constants/aiModels";
 import { resizableMultilineSx } from "../../constants/textFieldStyles";
 
@@ -67,8 +66,8 @@ type FormData = yup.InferType<typeof schema>;
 const CreateResume: React.FC = () => {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [aiModel, setAiModel] = React.useState<AiProvider>(DEFAULT_AI_PROVIDER);
-  const [aiVersion, setAiVersion] = React.useState(DEFAULT_AI_VERSION);
+  const [aiModel, setAiModel] = React.useState<AiProvider>("claude");
+  const [aiVersion, setAiVersion] = React.useState("claude-sonnet-4-6");
   const [profile, setProfile] = React.useState<UserResponse | null>(null);
   const [submitError, setSubmitError] = React.useState<string | null>(null);
 
@@ -91,7 +90,12 @@ const CreateResume: React.FC = () => {
 
   React.useEffect(() => {
     getProfile()
-      .then(setProfile)
+      .then((loadedProfile) => {
+        setProfile(loadedProfile);
+        const defaults = resolveUserDefaultAi(loadedProfile);
+        setAiModel(defaults.aiModel);
+        setAiVersion(defaults.aiVersion);
+      })
       .catch(() => {
         // Profile warning is optional; submit validation still runs on the server.
       });

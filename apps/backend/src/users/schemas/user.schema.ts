@@ -33,6 +33,12 @@ export class User {
   @Prop({ type: String, required: false })
   coverLetterPrompt?: string;
 
+  @Prop({ default: 'claude', enum: ['openai', 'claude'] })
+  defaultAiModel: string;
+
+  @Prop({ default: 'claude-sonnet-4-6' })
+  defaultAiVersion: string;
+
   @Prop({ type: String, required: false, select: false })
   encryptedOpenaiApiKey?: string;
 

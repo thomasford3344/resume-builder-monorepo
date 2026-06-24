@@ -151,6 +151,12 @@ export class UsersService {
     if (updateUserDto.coverLetterPrompt !== undefined) {
       user.coverLetterPrompt = updateUserDto.coverLetterPrompt;
     }
+    if (updateUserDto.defaultAiModel !== undefined) {
+      user.defaultAiModel = updateUserDto.defaultAiModel;
+    }
+    if (updateUserDto.defaultAiVersion !== undefined) {
+      user.defaultAiVersion = updateUserDto.defaultAiVersion;
+    }
 
     this.applyApiKeyUpdates(user, updateUserDto);
 
@@ -206,6 +212,12 @@ export class UsersService {
     }
     if (updateUserDto.coverLetterPrompt !== undefined) {
       user.coverLetterPrompt = updateUserDto.coverLetterPrompt;
+    }
+    if (updateUserDto.defaultAiModel !== undefined) {
+      user.defaultAiModel = updateUserDto.defaultAiModel;
+    }
+    if (updateUserDto.defaultAiVersion !== undefined) {
+      user.defaultAiVersion = updateUserDto.defaultAiVersion;
     }
 
     this.applyApiKeyUpdates(user, updateUserDto);
