@@ -232,7 +232,8 @@ const Layout: React.FC = () => {
       </Dialog>
       <Box
         sx={{
-          bgcolor: "#e0e0e0",
+          bgcolor: (theme) => theme.palette.background.default,
+          color: (theme) => theme.palette.text.primary,
           padding: 2,
           overflow: "auto",
           flexBasis: "calc(100vh - 128px)",

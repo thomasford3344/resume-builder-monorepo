@@ -6,9 +6,11 @@ const LayoutWithoutHeader: React.FC = () => {
   return (
     <Box
       sx={{
-        bgcolor: "#e0e0e0",
+        bgcolor: (theme) => theme.palette.background.default,
+        color: (theme) => theme.palette.text.primary,
         padding: 2,
         minHeight: "100vh",
+        width: "100%",
       }}
     >
       <Outlet />
