@@ -19,6 +19,7 @@ export interface ResumeSettings {
   showSubTitle: boolean;
   showCompanySkills: boolean;
   skillCategories: SkillCategory[];
+  useDefaultOutputFormat: boolean;
   responsibilitiesCount: number;
   achievementsCount: number;
   skillsPerCategoryCount: number;
@@ -30,6 +31,7 @@ export const DEFAULT_RESUME_SETTINGS: ResumeSettings = {
   showSubTitle: true,
   showCompanySkills: true,
   skillCategories: [...SKILL_CATEGORIES],
+  useDefaultOutputFormat: true,
   responsibilitiesCount: 3,
   achievementsCount: 5,
   skillsPerCategoryCount: 8,
@@ -81,6 +83,8 @@ export function resolveResumeSettings(
     showCompanySkills:
       partial?.showCompanySkills ?? base.showCompanySkills ?? true,
     skillCategories: normalizeSkillCategories(base.skillCategories),
+    useDefaultOutputFormat:
+      partial?.useDefaultOutputFormat ?? base.useDefaultOutputFormat ?? true,
     responsibilitiesCount: clampCount(
       base.responsibilitiesCount,
       DEFAULT_RESUME_SETTINGS.responsibilitiesCount,
@@ -108,6 +112,7 @@ export function resumeSettingsEqual(
     a.showTitle !== b.showTitle ||
     a.showSubTitle !== b.showSubTitle ||
     a.showCompanySkills !== b.showCompanySkills ||
+    a.useDefaultOutputFormat !== b.useDefaultOutputFormat ||
     a.responsibilitiesCount !== b.responsibilitiesCount ||
     a.achievementsCount !== b.achievementsCount ||
     a.skillsPerCategoryCount !== b.skillsPerCategoryCount ||

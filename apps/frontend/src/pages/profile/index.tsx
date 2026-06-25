@@ -32,6 +32,7 @@ import {
   LightMode as LightModeIcon,
   DarkMode as DarkModeIcon,
   Description as DescriptionIcon,
+  ArrowBack as ArrowBackIcon,
 } from "@mui/icons-material";
 import { Link } from "react-router";
 import { toast } from "react-toastify";
@@ -736,7 +737,7 @@ const Profile: React.FC = () => {
           Default AI Model
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-          Pre-selected provider, version, and mode on the Generate Resume page.
+          Pre-selected mode, provider and version on the Generate Resume page.
         </Typography>
         <Stack spacing={2}>
           <ResumeCheckboxRow
@@ -1145,50 +1146,77 @@ const Profile: React.FC = () => {
 
       <Box>
         <Typography variant="subtitle1" gutterBottom>
-          Generation counts
+          AI output format
         </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          These values set minimum item counts in the AI JSON schema.
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+          When enabled, generation uses the built-in JSON schema with the counts
+          below. When disabled, output structure comes from your resume prompt
+          only.
         </Typography>
-        <Stack spacing={2}>
-          <TextField
-            label="Responsibilities per role"
-            type="number"
-            size="small"
-            inputProps={{ min: 0, max: 30 }}
-            value={resumeSettingsForm.responsibilitiesCount}
-            onChange={handleResumeCountChange("responsibilitiesCount")}
-            sx={{ maxWidth: 320 }}
-          />
-          <TextField
-            label="Achievements per role"
-            type="number"
-            size="small"
-            inputProps={{ min: 0, max: 30 }}
-            value={resumeSettingsForm.achievementsCount}
-            onChange={handleResumeCountChange("achievementsCount")}
-            sx={{ maxWidth: 320 }}
-          />
-          <TextField
-            label="Skills per category"
-            type="number"
-            size="small"
-            inputProps={{ min: 0, max: 30 }}
-            value={resumeSettingsForm.skillsPerCategoryCount}
-            onChange={handleResumeCountChange("skillsPerCategoryCount")}
-            sx={{ maxWidth: 320 }}
-          />
-          <TextField
-            label="Company skills per role"
-            type="number"
-            size="small"
-            inputProps={{ min: 0, max: 30 }}
-            value={resumeSettingsForm.companySkillsCount}
-            onChange={handleResumeCountChange("companySkillsCount")}
-            sx={{ maxWidth: 320 }}
-          />
-        </Stack>
+        <ResumeCheckboxRow
+          label="Use default output format"
+          checked={resumeSettingsForm.useDefaultOutputFormat}
+          onChange={(_event, checked) =>
+            setResumeSettingsForm((prev) => ({
+              ...prev,
+              useDefaultOutputFormat: checked,
+            }))
+          }
+        />
       </Box>
+
+      {resumeSettingsForm.useDefaultOutputFormat && (
+        <>
+          <Divider />
+
+          <Box>
+            <Typography variant="subtitle1" gutterBottom>
+              Generation counts
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              These values set minimum item counts in the AI JSON schema.
+            </Typography>
+            <Stack spacing={2}>
+              <TextField
+                label="Responsibilities per role"
+                type="number"
+                size="small"
+                inputProps={{ min: 0, max: 30 }}
+                value={resumeSettingsForm.responsibilitiesCount}
+                onChange={handleResumeCountChange("responsibilitiesCount")}
+                sx={{ maxWidth: 320 }}
+              />
+              <TextField
+                label="Achievements per role"
+                type="number"
+                size="small"
+                inputProps={{ min: 0, max: 30 }}
+                value={resumeSettingsForm.achievementsCount}
+                onChange={handleResumeCountChange("achievementsCount")}
+                sx={{ maxWidth: 320 }}
+              />
+              <TextField
+                label="Skills per category"
+                type="number"
+                size="small"
+                inputProps={{ min: 0, max: 30 }}
+                value={resumeSettingsForm.skillsPerCategoryCount}
+                onChange={handleResumeCountChange("skillsPerCategoryCount")}
+                sx={{ maxWidth: 320 }}
+              />
+              <TextField
+                label="Company skills per role"
+                type="number"
+                size="small"
+                inputProps={{ min: 0, max: 30 }}
+                value={resumeSettingsForm.companySkillsCount}
+                onChange={handleResumeCountChange("companySkillsCount")}
+                sx={{ maxWidth: 320 }}
+              />
+            </Stack>
+          </Box>
+        </>
+      )}
     </Stack>
   );
 
@@ -1299,7 +1327,12 @@ const Profile: React.FC = () => {
         sx={{ mb: 2 }}
       >
         <Typography variant="h4">Settings</Typography>
-        <Button variant="contained" component={Link} to="/resumes">
+        <Button
+          variant="contained"
+          component={Link}
+          to="/resumes"
+          startIcon={<ArrowBackIcon />}
+        >
           Back to Resumes
         </Button>
       </Stack>
