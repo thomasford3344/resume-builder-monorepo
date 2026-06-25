@@ -19,7 +19,6 @@ import RaceProvider from "./components/common/RaceContext";
 import Users from "./pages/users";
 import Resumes from "./pages/resumes";
 import CreateResume from "./pages/resumes/CreateResume";
-import FromJson from "./pages/resumes/FromJson";
 import LayoutWithoutHeader from "./components/common/LayoutWithoutHeader";
 import NonAdminLayout from "./components/common/NonAdminLayout";
 import Profile from "./pages/profile";
@@ -58,7 +57,7 @@ const router = createBrowserRouter([
         children: [
           { path: "resumes", element: <Resumes /> }, // '/resumes'
           { path: "resumes/new", element: <CreateResume /> }, // '/resumes/new'
-          { path: "fromjson", element: <FromJson /> }, // '/fromjson'
+          { path: "fromjson", element: <Navigate to="/resumes/new?fromJson=1" replace /> },
           { path: "settings", element: <Profile /> }, // '/settings'
         ],
       },

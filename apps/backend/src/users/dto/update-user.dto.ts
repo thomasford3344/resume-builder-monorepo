@@ -11,6 +11,9 @@ export class UpdateUserDto {
   coverLetterPrompt?: string;
   defaultAiModel?: 'openai' | 'claude';
   defaultAiVersion?: string;
+  defaultGenerateFromJson?: boolean;
+  defaultFromJsonAiModel?: 'openai' | 'claude';
+  defaultFromJsonAiVersion?: string;
   openaiApiKey?: string;
   anthropicApiKey?: string;
   clearOpenaiApiKey?: boolean;

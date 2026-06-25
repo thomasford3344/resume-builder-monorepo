@@ -187,6 +187,15 @@ export class UsersService {
     if (updateUserDto.defaultAiVersion !== undefined) {
       user.defaultAiVersion = updateUserDto.defaultAiVersion;
     }
+    if (updateUserDto.defaultGenerateFromJson !== undefined) {
+      user.defaultGenerateFromJson = updateUserDto.defaultGenerateFromJson;
+    }
+    if (updateUserDto.defaultFromJsonAiModel !== undefined) {
+      user.defaultFromJsonAiModel = updateUserDto.defaultFromJsonAiModel;
+    }
+    if (updateUserDto.defaultFromJsonAiVersion !== undefined) {
+      user.defaultFromJsonAiVersion = updateUserDto.defaultFromJsonAiVersion;
+    }
 
     this.applyResumeSettingsUpdate(user, updateUserDto.resumeSettings);
     this.applyApiKeyUpdates(user, updateUserDto);
@@ -249,6 +258,15 @@ export class UsersService {
     }
     if (updateUserDto.defaultAiVersion !== undefined) {
       user.defaultAiVersion = updateUserDto.defaultAiVersion;
+    }
+    if (updateUserDto.defaultGenerateFromJson !== undefined) {
+      user.defaultGenerateFromJson = updateUserDto.defaultGenerateFromJson;
+    }
+    if (updateUserDto.defaultFromJsonAiModel !== undefined) {
+      user.defaultFromJsonAiModel = updateUserDto.defaultFromJsonAiModel;
+    }
+    if (updateUserDto.defaultFromJsonAiVersion !== undefined) {
+      user.defaultFromJsonAiVersion = updateUserDto.defaultFromJsonAiVersion;
     }
 
     this.applyResumeSettingsUpdate(user, updateUserDto.resumeSettings);

@@ -33,6 +33,9 @@ export interface UserResponse {
   coverLetterPrompt?: string;
   defaultAiModel?: "openai" | "claude";
   defaultAiVersion?: string;
+  defaultGenerateFromJson?: boolean;
+  defaultFromJsonAiModel?: "openai" | "claude";
+  defaultFromJsonAiVersion?: string;
   resumeSettings?: ResumeSettings;
   hasOpenaiApiKey?: boolean;
   hasAnthropicApiKey?: boolean;
@@ -78,6 +81,9 @@ export interface UpdateProfileDto {
   coverLetterPrompt?: string;
   defaultAiModel?: "openai" | "claude";
   defaultAiVersion?: string;
+  defaultGenerateFromJson?: boolean;
+  defaultFromJsonAiModel?: "openai" | "claude";
+  defaultFromJsonAiVersion?: string;
   resumeSettings?: Partial<ResumeSettings>;
   openaiApiKey?: string;
   anthropicApiKey?: string;
