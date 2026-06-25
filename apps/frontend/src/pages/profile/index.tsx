@@ -58,6 +58,11 @@ import {
   resolveUserDefaultFromJsonAi,
 } from "../../constants/aiModels";
 import { useThemeMode } from "../../components/common/ThemeContext";
+import {
+  ALERT_POSITIONS,
+  useToastPosition,
+  type AlertPosition,
+} from "../../components/common/ToastPositionContext";
 import { alpha } from "@mui/material/styles";
 import {
   DEFAULT_RESUME_SETTINGS,
@@ -197,6 +202,8 @@ function ResumeCheckboxRow({
 
 const Profile: React.FC = () => {
   const { mode, setMode } = useThemeMode();
+  const { position: alertPosition, setPosition: setAlertPosition } =
+    useToastPosition();
   const skipAutoSaveRef = React.useRef(true);
   const [user, setUser] = React.useState<UserResponse | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -730,6 +737,57 @@ const Profile: React.FC = () => {
             </Box>
           </ToggleButton>
         </ToggleButtonGroup>
+      </Box>
+
+      <Box>
+        <Typography variant="subtitle1" gutterBottom>
+          Alert position
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+          Choose where toast notifications appear in the app.
+        </Typography>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems="flex-start">
+          <ToggleButtonGroup
+            value={alertPosition}
+            exclusive
+            onChange={(_event, nextPosition: AlertPosition | null) => {
+              if (nextPosition) {
+                setAlertPosition(nextPosition);
+              }
+            }}
+            size="small"
+            sx={{
+              width: "fit-content",
+              "& .MuiToggleButton-root": {
+                textTransform: "none",
+                px: 2,
+              },
+              "& .MuiToggleButton-root.Mui-selected": {
+                backgroundColor: "primary.main",
+                color: "primary.contrastText",
+                "&:hover": {
+                  backgroundColor: "primary.dark",
+                },
+              },
+            }}
+          >
+            {ALERT_POSITIONS.map((option) => (
+              <ToggleButton key={option.value} value={option.value}>
+                {option.label}
+              </ToggleButton>
+            ))}
+          </ToggleButtonGroup>
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={() => {
+              toast.info("This is a sample alert.");
+            }}
+            sx={{ height: 40 }}
+          >
+            Sample alert
+          </Button>
+        </Stack>
       </Box>
 
       <Box>
