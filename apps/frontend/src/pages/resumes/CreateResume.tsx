@@ -9,6 +9,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import { ArrowBack as ArrowBackIcon } from "@mui/icons-material";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
@@ -322,8 +323,13 @@ const CreateResume: React.FC = () => {
         sx={{ mb: 2 }}
       >
         <Typography variant="h4">Generate Resume</Typography>
-        <Button variant="contained" component={Link} to="/resumes">
-          Back to Resumes
+        <Button
+          variant="contained"
+          component={Link}
+          to="/resumes"
+          startIcon={<ArrowBackIcon />}
+        >
+          Resumes
         </Button>
       </Stack>
 
@@ -457,7 +463,7 @@ const CreateResume: React.FC = () => {
               disabled={isSubmitting}
               fullWidth
             >
-              {isSubmitting ? "Generating PDF..." : "Generate PDF"}
+              {isSubmitting ? "Generating..." : "Generate"}
             </Button>
           </Stack>
         </form>
@@ -512,7 +518,7 @@ const CreateResume: React.FC = () => {
               disabled={isAiGenerateDisabled}
               fullWidth
             >
-              {isSubmitting ? "Generating Resume..." : "Generate Resume"}
+              {isSubmitting ? "Generating..." : "Generate"}
             </Button>
           </Stack>
         </form>

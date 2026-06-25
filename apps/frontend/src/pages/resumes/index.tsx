@@ -669,7 +669,7 @@ const Resumes: React.FC = () => {
             to="/resumes/new"
             startIcon={<AddIcon />}
           >
-            Generate Resume
+            Generate
           </Button>
           <Box
             onClick={handleAvatarMenuOpen}
@@ -879,7 +879,7 @@ const Resumes: React.FC = () => {
               to="/resumes/new"
               startIcon={<AddIcon />}
             >
-              Generate Resume
+              Generate
             </Button>
           </Stack>
         </Paper>

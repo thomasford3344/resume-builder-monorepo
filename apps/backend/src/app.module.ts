@@ -9,7 +9,7 @@ import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { ResumesModule } from './resumes/resumes.module';
-import { OpenAIModule } from './openai/openai.module';
+import { AiModule } from './ai/ai.module';
 
 @Module({
   imports: [
@@ -27,7 +27,7 @@ import { OpenAIModule } from './openai/openai.module';
     UsersModule,
     ScheduleModule.forRoot(),
     ResumesModule,
-    OpenAIModule,
+    AiModule,
   ],
   controllers: [AppController],
   providers: [AppService],

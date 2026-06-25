@@ -22,6 +22,9 @@ export class ResumeSettingsEmbedded {
   @Prop({ type: [String], default: () => [...SKILL_CATEGORIES] })
   skillCategories: string[];
 
+  @Prop({ default: DEFAULT_RESUME_SETTINGS.useDefaultOutputFormat })
+  useDefaultOutputFormat: boolean;
+
   @Prop({ default: DEFAULT_RESUME_SETTINGS.responsibilitiesCount })
   responsibilitiesCount: number;
 

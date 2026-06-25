@@ -6,7 +6,7 @@ import { ResumesGateway } from './resumes.gateway';
 import { Resume, ResumeSchema } from './schemas/resume.schema';
 import { User, UserSchema } from '../users/schemas/user.schema';
 import { UsersModule } from '../users/users.module';
-import { OpenAIModule } from '../openai/openai.module';
+import { AiModule } from '../ai/ai.module';
 
 @Module({
   imports: [
@@ -15,7 +15,7 @@ import { OpenAIModule } from '../openai/openai.module';
       { name: User.name, schema: UserSchema },
     ]),
     UsersModule,
-    OpenAIModule,
+    AiModule,
   ],
   providers: [ResumesService, ResumesGateway],
   controllers: [ResumesController],
