@@ -18,7 +18,7 @@ import {
   DEFAULT_RESUME_PDF_SETTINGS,
   type ResumePdfSettings,
 } from './templates';
-import { OpenAIService } from '../openai/openai.service';
+import { AiService } from '../ai/ai.service';
 import { UsersService } from '../users/users.service';
 import { getResumePdfSettings } from '../ai/resume-settings';
 
@@ -42,7 +42,7 @@ export class ResumesService {
   constructor(
     @InjectModel(Resume.name) private resumeModel: Model<Resume>,
     @InjectModel(User.name) private userModel: Model<User>,
-    private openAIService: OpenAIService,
+    private aiService: AiService,
     private usersService: UsersService,
     private readonly gateway: ResumesGateway
   ) {}
@@ -2796,7 +2796,7 @@ CANDIDATE_BACKGROUND:
     // Call OpenAI API to generate the resume JSON (includes cover_letter)
     const apiKeys = await this.usersService.getApiKeysForUser(userId);
     const resumeSettings = await this.usersService.getResumeSettings(userId);
-    const { resumeJson, threadId } = await this.openAIService.generateResume(
+    const { resumeJson, threadId } = await this.aiService.generateResume(
       resume.jobDescription,
       instructions,
       (resume.aiModel as 'openai' | 'claude') || 'openai',
@@ -2974,7 +2974,7 @@ CANDIDATE_BACKGROUND:
     const apiKeys = await this.usersService.getApiKeysForUser(userId);
 
     // Call OpenAI service with optional custom prompt
-    return await this.openAIService.parseAndAnswerQuestions(
+    return await this.aiService.parseAndAnswerQuestions(
       questionsText,
       resumeJson,
       jobDescription,
@@ -3241,7 +3241,7 @@ CANDIDATE_BACKGROUND:
       await this.validateApiKeyForGeneration(userId, aiModel);
 
       const apiKeys = await this.usersService.getApiKeysForUser(userId);
-      const coverLetterText = await this.openAIService.generateCoverLetter(
+      const coverLetterText = await this.aiService.generateCoverLetter(
         resume.jobDescription,
         resumeJson as unknown as Record<string, unknown>,
         resume.conversationId,
