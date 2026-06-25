@@ -27,7 +27,8 @@ export interface UserResponse {
     | "template2"
     | "template3"
     | "template4"
-    | "template5";
+    | "template5"
+    | "template6";
   instructions?: string;
   questionsPrompt?: string;
   coverLetterPrompt?: string;
@@ -51,7 +52,8 @@ export interface CreateUserDto {
     | "template2"
     | "template3"
     | "template4"
-    | "template5";
+    | "template5"
+    | "template6";
   instructions?: string;
   questionsPrompt?: string;
   coverLetterPrompt?: string;
@@ -67,7 +69,8 @@ export interface UpdateUserDto {
     | "template2"
     | "template3"
     | "template4"
-    | "template5";
+    | "template5"
+    | "template6";
   instructions?: string;
   questionsPrompt?: string;
   coverLetterPrompt?: string;
