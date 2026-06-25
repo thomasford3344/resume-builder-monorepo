@@ -1333,7 +1333,7 @@ const Profile: React.FC = () => {
           to="/resumes"
           startIcon={<ArrowBackIcon />}
         >
-          Back to Resumes
+          Resumes
         </Button>
       </Stack>
 

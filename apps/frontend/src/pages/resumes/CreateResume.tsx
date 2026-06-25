@@ -329,7 +329,7 @@ const CreateResume: React.FC = () => {
           to="/resumes"
           startIcon={<ArrowBackIcon />}
         >
-          Back to Resumes
+          Resumes
         </Button>
       </Stack>
 
@@ -463,7 +463,7 @@ const CreateResume: React.FC = () => {
               disabled={isSubmitting}
               fullWidth
             >
-              {isSubmitting ? "Generating PDF..." : "Generate PDF"}
+              {isSubmitting ? "Generating..." : "Generate"}
             </Button>
           </Stack>
         </form>
@@ -518,7 +518,7 @@ const CreateResume: React.FC = () => {
               disabled={isAiGenerateDisabled}
               fullWidth
             >
-              {isSubmitting ? "Generating Resume..." : "Generate Resume"}
+              {isSubmitting ? "Generating..." : "Generate"}
             </Button>
           </Stack>
         </form>
