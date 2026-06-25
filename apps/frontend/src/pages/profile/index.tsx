@@ -236,7 +236,7 @@ const Profile: React.FC = () => {
   const [changingPassword, setChangingPassword] = React.useState(false);
   const [downloadingTemplatePreview, setDownloadingTemplatePreview] =
     React.useState(false);
-  const templateOptions = [...Array(5)].map((_, index) => ({
+  const templateOptions = [...Array(6)].map((_, index) => ({
     value: `template${index + 1}`,
     label: `Template ${index + 1}`,
   }));
