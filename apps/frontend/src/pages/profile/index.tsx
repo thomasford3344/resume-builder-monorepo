@@ -746,48 +746,39 @@ const Profile: React.FC = () => {
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
           Choose where toast notifications appear in the app.
         </Typography>
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems="flex-start">
-          <ToggleButtonGroup
-            value={alertPosition}
-            exclusive
-            onChange={(_event, nextPosition: AlertPosition | null) => {
-              if (nextPosition) {
-                setAlertPosition(nextPosition);
-              }
-            }}
-            size="small"
-            sx={{
-              width: "fit-content",
-              "& .MuiToggleButton-root": {
-                textTransform: "none",
-                px: 2,
+        <ToggleButtonGroup
+          value={alertPosition}
+          exclusive
+          onChange={(_event, nextPosition: AlertPosition | null) => {
+            if (nextPosition) {
+              setAlertPosition(nextPosition);
+              window.setTimeout(() => {
+                toast.info("This is a sample alert.");
+              }, 200);
+            }
+          }}
+          size="small"
+          sx={{
+            width: "fit-content",
+            "& .MuiToggleButton-root": {
+              textTransform: "none",
+              px: 2,
+            },
+            "& .MuiToggleButton-root.Mui-selected": {
+              backgroundColor: "primary.main",
+              color: "primary.contrastText",
+              "&:hover": {
+                backgroundColor: "primary.dark",
               },
-              "& .MuiToggleButton-root.Mui-selected": {
-                backgroundColor: "primary.main",
-                color: "primary.contrastText",
-                "&:hover": {
-                  backgroundColor: "primary.dark",
-                },
-              },
-            }}
-          >
-            {ALERT_POSITIONS.map((option) => (
-              <ToggleButton key={option.value} value={option.value}>
-                {option.label}
-              </ToggleButton>
-            ))}
-          </ToggleButtonGroup>
-          <Button
-            variant="outlined"
-            size="small"
-            onClick={() => {
-              toast.info("This is a sample alert.");
-            }}
-            sx={{ height: 40 }}
-          >
-            Sample alert
-          </Button>
-        </Stack>
+            },
+          }}
+        >
+          {ALERT_POSITIONS.map((option) => (
+            <ToggleButton key={option.value} value={option.value}>
+              {option.label}
+            </ToggleButton>
+          ))}
+        </ToggleButtonGroup>
       </Box>
 
       <Box>
