@@ -70,6 +70,29 @@ export function resolveUserDefaultAi(
   return { aiModel, aiVersion };
 }
 
+export function resolveUserDefaultFromJsonAi(
+  profile?: {
+    defaultFromJsonAiModel?: AiProvider;
+    defaultFromJsonAiVersion?: string;
+  } | null,
+): { aiModel: AiProvider; aiVersion: string } {
+  const aiModel =
+    profile?.defaultFromJsonAiModel === "openai" ||
+    profile?.defaultFromJsonAiModel === "claude"
+      ? profile.defaultFromJsonAiModel
+      : DEFAULT_FROM_JSON_AI_PROVIDER;
+  const models = aiModel === "openai" ? OPENAI_MODELS : CLAUDE_MODELS;
+  const fallbackVersion =
+    aiModel === "openai" ? DEFAULT_FROM_JSON_AI_VERSION : DEFAULT_CLAUDE_VERSION;
+  const candidate = profile?.defaultFromJsonAiVersion;
+  const aiVersion =
+    candidate && models.some((model) => model.value === candidate)
+      ? candidate
+      : fallbackVersion;
+
+  return { aiModel, aiVersion };
+}
+
 export function getModelLabel(provider: AiProvider, version: string): string {
   const models = provider === "openai" ? OPENAI_MODELS : CLAUDE_MODELS;
   const match = models.find((m) => m.value === version);

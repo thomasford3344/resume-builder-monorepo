@@ -70,6 +70,15 @@ export class User {
   @Prop({ default: 'claude-sonnet-4-6' })
   defaultAiVersion: string;
 
+  @Prop({ default: false })
+  defaultGenerateFromJson: boolean;
+
+  @Prop({ default: 'openai', enum: ['openai', 'claude'] })
+  defaultFromJsonAiModel: string;
+
+  @Prop({ default: 'gpt-5.5-thinking' })
+  defaultFromJsonAiVersion: string;
+
   @Prop({ type: String, required: false, select: false })
   encryptedOpenaiApiKey?: string;
 

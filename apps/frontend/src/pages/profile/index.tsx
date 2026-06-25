@@ -54,6 +54,7 @@ import AiModelSelector from "../../components/resumes/AiModelSelector";
 import {
   type AiProvider,
   resolveUserDefaultAi,
+  resolveUserDefaultFromJsonAi,
 } from "../../constants/aiModels";
 import { useThemeMode } from "../../components/common/ThemeContext";
 import { alpha } from "@mui/material/styles";
@@ -208,6 +209,9 @@ const Profile: React.FC = () => {
     questionsPrompt: "",
     defaultAiModel: "claude" as AiProvider,
     defaultAiVersion: "claude-sonnet-4-6",
+    defaultFromJsonAiModel: "openai" as AiProvider,
+    defaultFromJsonAiVersion: "gpt-5.5-thinking",
+    defaultGenerateFromJson: false,
     openaiApiKey: "",
     anthropicApiKey: "",
     currentPassword: "",
@@ -278,6 +282,7 @@ const Profile: React.FC = () => {
       setLoading(true);
       const profile = await getProfile();
       const defaultAi = resolveUserDefaultAi(profile);
+      const defaultFromJsonAi = resolveUserDefaultFromJsonAi(profile);
       setUser(profile);
       setResumeSettingsForm(resolveResumeSettings(profile.resumeSettings));
       setFormData({
@@ -288,6 +293,9 @@ const Profile: React.FC = () => {
         questionsPrompt: profile.questionsPrompt || "",
         defaultAiModel: defaultAi.aiModel,
         defaultAiVersion: defaultAi.aiVersion,
+        defaultFromJsonAiModel: defaultFromJsonAi.aiModel,
+        defaultFromJsonAiVersion: defaultFromJsonAi.aiVersion,
+        defaultGenerateFromJson: profile.defaultGenerateFromJson ?? false,
         openaiApiKey: "",
         anthropicApiKey: "",
         currentPassword: "",
@@ -337,18 +345,54 @@ const Profile: React.FC = () => {
   };
 
   const handleDefaultAiModelChange = (model: AiProvider, version: string) => {
+    setFormData((prev) => {
+      const fromJson = prev.defaultGenerateFromJson;
+      const next = fromJson
+        ? {
+            ...prev,
+            defaultFromJsonAiModel: model,
+            defaultFromJsonAiVersion: version,
+          }
+        : {
+            ...prev,
+            defaultAiModel: model,
+            defaultAiVersion: version,
+          };
+
+      if (!skipAutoSaveRef.current) {
+        void persistProfile(
+          fromJson
+            ? {
+                defaultFromJsonAiModel: model,
+                defaultFromJsonAiVersion: version,
+              }
+            : {
+                defaultAiModel: model,
+                defaultAiVersion: version,
+              },
+        ).catch(() => {
+          toast.error("Failed to save default AI model");
+        });
+      }
+
+      return next;
+    });
+  };
+
+  const handleDefaultGenerateFromJsonChange = (
+    _event: React.ChangeEvent<HTMLInputElement>,
+    checked: boolean,
+  ) => {
     setFormData((prev) => ({
       ...prev,
-      defaultAiModel: model,
-      defaultAiVersion: version,
+      defaultGenerateFromJson: checked,
     }));
 
     if (!skipAutoSaveRef.current) {
       void persistProfile({
-        defaultAiModel: model,
-        defaultAiVersion: version,
+        defaultGenerateFromJson: checked,
       }).catch(() => {
-        toast.error("Failed to save default AI model");
+        toast.error("Failed to save generate from JSON setting");
       });
     }
   };
@@ -692,13 +736,28 @@ const Profile: React.FC = () => {
           Default AI Model
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-          Pre-selected provider and version on the Generate Resume page.
+          Pre-selected provider, version, and mode on the Generate Resume page.
         </Typography>
-        <AiModelSelector
-          aiModel={formData.defaultAiModel}
-          aiVersion={formData.defaultAiVersion}
-          onChange={handleDefaultAiModelChange}
-        />
+        <Stack spacing={2}>
+          <ResumeCheckboxRow
+            label="Generate from JSON"
+            checked={formData.defaultGenerateFromJson}
+            onChange={handleDefaultGenerateFromJsonChange}
+          />
+          <AiModelSelector
+            aiModel={
+              formData.defaultGenerateFromJson
+                ? formData.defaultFromJsonAiModel
+                : formData.defaultAiModel
+            }
+            aiVersion={
+              formData.defaultGenerateFromJson
+                ? formData.defaultFromJsonAiVersion
+                : formData.defaultAiVersion
+            }
+            onChange={handleDefaultAiModelChange}
+          />
+        </Stack>
       </Box>
     </Stack>
   );

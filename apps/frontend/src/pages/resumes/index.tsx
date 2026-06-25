@@ -671,14 +671,6 @@ const Resumes: React.FC = () => {
           >
             Generate Resume
           </Button>
-          <Button
-            variant="contained"
-            component={Link}
-            to="/fromjson"
-            startIcon={<CodeIcon />}
-          >
-            Generate from JSON
-          </Button>
           <Box
             onClick={handleAvatarMenuOpen}
             sx={{
@@ -888,14 +880,6 @@ const Resumes: React.FC = () => {
               startIcon={<AddIcon />}
             >
               Generate Resume
-            </Button>
-            <Button
-              variant="contained"
-              component={Link}
-              to="/fromjson"
-              startIcon={<CodeIcon />}
-            >
-              Generate from JSON
             </Button>
           </Stack>
         </Paper>

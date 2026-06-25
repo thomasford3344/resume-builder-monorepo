@@ -1,7 +1,9 @@
 import * as React from "react";
 import {
   Alert,
+  Box,
   Button,
+  Checkbox,
   Paper,
   Stack,
   TextField,
@@ -11,16 +13,18 @@ import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import {
+  generatePdfFromJson,
   generateResumeStream,
   type GenerateResumeDto,
 } from "../../services/resumeService";
 import { getProfile, type UserResponse } from "../../services/userService";
 import { toast } from "react-toastify";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import AiModelSelector from "../../components/resumes/AiModelSelector";
 import {
   type AiProvider,
   resolveUserDefaultAi,
+  resolveUserDefaultFromJsonAi,
 } from "../../constants/aiModels";
 import { resizableMultilineSx } from "../../constants/textFieldStyles";
 
@@ -53,18 +57,44 @@ const getApiKeyWarning = (
   return null;
 };
 
-const schema = yup
+const aiGenerateSchema = yup
   .object({
     companyName: yup.string().required("Company name is required"),
     roleType: yup.string().required("Role type is required"),
-    jobDescription: yup.string().required("Job description is required")
+    jobDescription: yup.string().required("Job description is required"),
   })
   .required();
 
-type FormData = yup.InferType<typeof schema>;
+const fromJsonSchema = yup
+  .object({
+    companyName: yup.string().required("Company name is required"),
+    roleType: yup.string().required("Job title is required"),
+    jobDescription: yup.string().required("Job description is required"),
+    jsonContent: yup
+      .string()
+      .required("JSON content is required")
+      .test("valid-json", "Invalid JSON format", (value) => {
+        if (!value?.trim()) return false;
+        try {
+          JSON.parse(value);
+          return true;
+        } catch {
+          return false;
+        }
+      }),
+  })
+  .required();
+
+type AiGenerateFormData = yup.InferType<typeof aiGenerateSchema>;
+type FromJsonFormData = yup.InferType<typeof fromJsonSchema>;
 
 const CreateResume: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const fromJsonParam = searchParams.get("fromJson");
+  const [generateFromJson, setGenerateFromJson] = React.useState(
+    () => fromJsonParam === "1",
+  );
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [aiModel, setAiModel] = React.useState<AiProvider>("claude");
   const [aiVersion, setAiVersion] = React.useState("claude-sonnet-4-6");
@@ -72,7 +102,7 @@ const CreateResume: React.FC = () => {
   const [submitError, setSubmitError] = React.useState<string | null>(null);
 
   const [formData, setFormData] = React.useState({
-    industry: "default"
+    industry: "default",
   });
 
   const apiKeyWarning = React.useMemo(
@@ -85,34 +115,84 @@ const CreateResume: React.FC = () => {
     [profile],
   );
 
-  const isGenerateDisabled =
+  const isAiGenerateDisabled =
     isSubmitting || !!apiKeyWarning || !!resumePromptWarning;
 
   React.useEffect(() => {
     getProfile()
       .then((loadedProfile) => {
         setProfile(loadedProfile);
-        const defaults = resolveUserDefaultAi(loadedProfile);
+
+        const useFromJson =
+          fromJsonParam === "1"
+            ? true
+            : fromJsonParam === "0"
+              ? false
+              : !!loadedProfile.defaultGenerateFromJson;
+
+        setGenerateFromJson(useFromJson);
+
+        const defaults = useFromJson
+          ? resolveUserDefaultFromJsonAi(loadedProfile)
+          : resolveUserDefaultAi(loadedProfile);
         setAiModel(defaults.aiModel);
         setAiVersion(defaults.aiVersion);
       })
       .catch(() => {
         // Profile warning is optional; submit validation still runs on the server.
       });
-  }, []);
+  }, [fromJsonParam]);
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<FormData>({
-    resolver: yupResolver(schema),
+  const aiForm = useForm<AiGenerateFormData>({
+    resolver: yupResolver(aiGenerateSchema),
     defaultValues: {
       companyName: "",
       roleType: "",
-      jobDescription: ""
+      jobDescription: "",
     },
   });
+
+  const jsonForm = useForm<FromJsonFormData>({
+    resolver: yupResolver(fromJsonSchema),
+    defaultValues: {
+      companyName: "",
+      roleType: "",
+      jobDescription: "",
+      jsonContent: "",
+    },
+  });
+
+  const handleGenerateFromJsonChange = (
+    event: React.ChangeEvent<HTMLInputElement>,
+    checked: boolean,
+  ) => {
+    if (checked) {
+      const aiValues = aiForm.getValues();
+      jsonForm.reset({
+        ...jsonForm.getValues(),
+        companyName: aiValues.companyName,
+        roleType: aiValues.roleType,
+        jobDescription: aiValues.jobDescription,
+      });
+      const fromJsonDefaults = resolveUserDefaultFromJsonAi(profile);
+      setAiModel(fromJsonDefaults.aiModel);
+      setAiVersion(fromJsonDefaults.aiVersion);
+    } else {
+      const jsonValues = jsonForm.getValues();
+      aiForm.reset({
+        ...aiForm.getValues(),
+        companyName: jsonValues.companyName,
+        roleType: jsonValues.roleType,
+        jobDescription: jsonValues.jobDescription,
+      });
+      const defaults = resolveUserDefaultAi(profile);
+      setAiModel(defaults.aiModel);
+      setAiVersion(defaults.aiVersion);
+    }
+
+    setGenerateFromJson(checked);
+    setSubmitError(null);
+  };
 
   const handleAiModelChange = (model: AiProvider, version: string) => {
     setAiModel(model);
@@ -120,7 +200,7 @@ const CreateResume: React.FC = () => {
     setSubmitError(null);
   };
 
-  const onSubmit = async (data: FormData) => {
+  const onAiSubmit = async (data: AiGenerateFormData) => {
     setIsSubmitting(true);
     setSubmitError(null);
 
@@ -154,13 +234,80 @@ const CreateResume: React.FC = () => {
         return;
       }
     } catch (error: unknown) {
-      const err = error as { response?: { data?: { message?: string } }; message?: string };
+      const err = error as {
+        response?: { data?: { message?: string } };
+        message?: string;
+      };
       const errorMessage =
         err.response?.data?.message ||
         err.message ||
         "Failed to generate resume";
       setSubmitError(errorMessage);
       toast.error(errorMessage);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const onJsonSubmit = async (data: FromJsonFormData) => {
+    setIsSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      const response = await generatePdfFromJson({
+        companyName: data.companyName,
+        roleType: data.roleType,
+        jobDescription: data.jobDescription,
+        jsonContent: data.jsonContent,
+        aiModel,
+        aiVersion,
+      });
+      const pdfBlob = response.data;
+
+      const contentDisposition = response.headers["content-disposition"];
+      let filename = "resume.pdf";
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(
+          /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/,
+        );
+        if (filenameMatch?.[1]) {
+          filename = filenameMatch[1].replace(/['"]/g, "");
+        }
+      }
+
+      const url = window.URL.createObjectURL(pdfBlob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast.success("Resume saved and PDF downloaded successfully!");
+      navigate("/resumes");
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: Blob }; message?: string };
+      let message = "Failed to generate PDF from JSON";
+
+      if (err.response?.data instanceof Blob) {
+        try {
+          const text = await err.response.data.text();
+          const parsed = JSON.parse(text) as { message?: string | string[] };
+          if (parsed.message) {
+            message = Array.isArray(parsed.message)
+              ? parsed.message.join(", ")
+              : parsed.message;
+          }
+        } catch {
+          // use default message
+        }
+      } else if (err.message) {
+        message = err.message;
+      }
+
+      setSubmitError(message);
+      toast.error(message);
     } finally {
       setIsSubmitting(false);
     }
@@ -180,13 +327,23 @@ const CreateResume: React.FC = () => {
         </Button>
       </Stack>
 
+      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 2 }}>
+        <Checkbox
+          checked={generateFromJson}
+          onChange={handleGenerateFromJsonChange}
+          size="small"
+          sx={{ p: 0.5 }}
+        />
+        <Typography variant="body1">Generate from JSON</Typography>
+      </Box>
+
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Enter job details and paste the job description. A tailored resume will
-        be generated in the background using your profile prompt and selected AI
-        model.
+        {generateFromJson
+          ? "Enter job details and paste resume JSON. A completed resume record will be saved and the PDF will use your profile template."
+          : "Enter job details and paste the job description. A tailored resume will be generated in the background using your profile prompt and selected AI model."}
       </Typography>
 
-      {resumePromptWarning && (
+      {!generateFromJson && resumePromptWarning && (
         <Alert
           severity="warning"
           sx={{ mb: 2 }}
@@ -200,7 +357,7 @@ const CreateResume: React.FC = () => {
         </Alert>
       )}
 
-      {apiKeyWarning && (
+      {!generateFromJson && apiKeyWarning && (
         <Alert
           severity="warning"
           sx={{ mb: 2 }}
@@ -231,61 +388,135 @@ const CreateResume: React.FC = () => {
         </Alert>
       )}
 
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <Stack spacing={3}>
-          <AiModelSelector
-            aiModel={aiModel}
-            aiVersion={aiVersion}
-            onChange={handleAiModelChange}
-            disabled={isSubmitting}
-          />
+      {generateFromJson ? (
+        <form onSubmit={jsonForm.handleSubmit(onJsonSubmit)}>
+          <Stack spacing={3}>
+            <AiModelSelector
+              aiModel={aiModel}
+              aiVersion={aiVersion}
+              onChange={handleAiModelChange}
+              disabled={isSubmitting}
+            />
 
-          <TextField
-            {...register("companyName")}
-            label="Company Name"
-            fullWidth
-            error={!!errors.companyName}
-            helperText={errors.companyName?.message}
-            required
-            size="small"
-            disabled={isSubmitting}
-          />
-          <TextField
-            {...register("roleType")}
-            label="Role Type"
-            fullWidth
-            error={!!errors.roleType}
-            helperText={errors.roleType?.message}
-            required
-            size="small"
-            disabled={isSubmitting}
-          />
-          <TextField
-            {...register("jobDescription")}
-            label="Job Description"
-            fullWidth
-            multiline
-            rows={10}
-            error={!!errors.jobDescription}
-            helperText={errors.jobDescription?.message}
-            required
-            placeholder="Paste the job description here..."
-            disabled={isSubmitting}
-            sx={resizableMultilineSx}
-          />
+            <TextField
+              {...jsonForm.register("companyName")}
+              label="Company Name"
+              fullWidth
+              error={!!jsonForm.formState.errors.companyName}
+              helperText={jsonForm.formState.errors.companyName?.message}
+              required
+              size="small"
+              disabled={isSubmitting}
+            />
+            <TextField
+              {...jsonForm.register("roleType")}
+              label="Job Title"
+              fullWidth
+              error={!!jsonForm.formState.errors.roleType}
+              helperText={jsonForm.formState.errors.roleType?.message}
+              required
+              size="small"
+              disabled={isSubmitting}
+            />
+            <TextField
+              {...jsonForm.register("jobDescription")}
+              label="Job Description"
+              fullWidth
+              multiline
+              rows={6}
+              error={!!jsonForm.formState.errors.jobDescription}
+              helperText={jsonForm.formState.errors.jobDescription?.message}
+              required
+              placeholder="Paste the job description here..."
+              disabled={isSubmitting}
+              size="small"
+              sx={resizableMultilineSx}
+            />
 
-          <Button
-            type="submit"
-            variant="contained"
-            size="large"
-            disabled={isGenerateDisabled}
-            fullWidth
-          >
-            {isSubmitting ? "Generating Resume..." : "Generate Resume"}
-          </Button>
+            <TextField
+              {...jsonForm.register("jsonContent")}
+              label="Resume JSON"
+              fullWidth
+              multiline
+              rows={16}
+              error={!!jsonForm.formState.errors.jsonContent}
+              helperText={
+                jsonForm.formState.errors.jsonContent?.message ??
+                "Paste the full resume JSON object"
+              }
+              placeholder='{"name": "...", "title": "...", ...}'
+              disabled={isSubmitting}
+              size="small"
+              sx={resizableMultilineSx}
+            />
 
-        </Stack>
-      </form>
+            <Button
+              type="submit"
+              variant="contained"
+              size="large"
+              disabled={isSubmitting}
+              fullWidth
+            >
+              {isSubmitting ? "Generating PDF..." : "Generate PDF"}
+            </Button>
+          </Stack>
+        </form>
+      ) : (
+        <form onSubmit={aiForm.handleSubmit(onAiSubmit)}>
+          <Stack spacing={3}>
+            <AiModelSelector
+              aiModel={aiModel}
+              aiVersion={aiVersion}
+              onChange={handleAiModelChange}
+              disabled={isSubmitting}
+            />
+
+            <TextField
+              {...aiForm.register("companyName")}
+              label="Company Name"
+              fullWidth
+              error={!!aiForm.formState.errors.companyName}
+              helperText={aiForm.formState.errors.companyName?.message}
+              required
+              size="small"
+              disabled={isSubmitting}
+            />
+            <TextField
+              {...aiForm.register("roleType")}
+              label="Role Type"
+              fullWidth
+              error={!!aiForm.formState.errors.roleType}
+              helperText={aiForm.formState.errors.roleType?.message}
+              required
+              size="small"
+              disabled={isSubmitting}
+            />
+            <TextField
+              {...aiForm.register("jobDescription")}
+              label="Job Description"
+              fullWidth
+              multiline
+              rows={10}
+              error={!!aiForm.formState.errors.jobDescription}
+              helperText={aiForm.formState.errors.jobDescription?.message}
+              required
+              placeholder="Paste the job description here..."
+              disabled={isSubmitting}
+              sx={resizableMultilineSx}
+            />
+
+            <Button
+              type="submit"
+              variant="contained"
+              size="large"
+              disabled={isAiGenerateDisabled}
+              fullWidth
+            >
+              {isSubmitting ? "Generating Resume..." : "Generate Resume"}
+            </Button>
+          </Stack>
+        </form>
+      )}
     </Paper>
   );
 };
