@@ -27,6 +27,7 @@ import {
   ListItemIcon,
   ListItemText,
   Divider,
+  Tooltip,
 } from "@mui/material";
 import {
   Delete as DeleteIcon,
@@ -291,18 +292,30 @@ const Resumes: React.FC = () => {
 
     type GenerateDonePayload = {
       id: string;
+      message?: string;
     };
 
     function onGenerateDone({ id }: GenerateDonePayload) {
       setResumes((prev) =>
-        prev.map((r) => (r._id === id ? { ...r, status: "completed" } : r))
+        prev.map((r) =>
+          r._id === id
+            ? { ...r, status: "completed", failureMessage: undefined }
+            : r,
+        ),
       );
     }
 
-    function onGenerateFailed({ id }: GenerateDonePayload) {
+    function onGenerateFailed({ id, message }: GenerateDonePayload) {
       setResumes((prev) =>
-        prev.map((r) => (r._id === id ? { ...r, status: "failed" } : r))
+        prev.map((r) =>
+          r._id === id
+            ? { ...r, status: "failed", failureMessage: message }
+            : r,
+        ),
       );
+      if (message) {
+        toast.error(message);
+      }
     }
 
     socket.on("connect", onConnect);
@@ -318,7 +331,8 @@ const Resumes: React.FC = () => {
     return () => {
       socket.off("connect", onConnect);
       socket.off("disconnect", onDisconnect);
-      socket.off("job:done", onGenerateDone);
+      socket.off("generate:done", onGenerateDone);
+      socket.off("generate:failed", onGenerateFailed);
       socket.off("connect_error");
     };
   }, []);
@@ -564,7 +578,11 @@ const Resumes: React.FC = () => {
     try {
       await retryResume(id);
       setResumes((prev) =>
-        prev.map((r) => (r._id === id ? { ...r, status: "in_progress" } : r)),
+        prev.map((r) =>
+          r._id === id
+            ? { ...r, status: "in_progress", failureMessage: undefined }
+            : r,
+        ),
       );
       toast.success("Resume generation restarted");
     } catch (error: unknown) {
@@ -1009,7 +1027,12 @@ const Resumes: React.FC = () => {
                         alignItems="center"
                         justifyContent="center"
                       >
-                        <Chip label="Failed" color="error" size="small" />
+                        <Tooltip
+                          title={resume.failureMessage || "Generation failed"}
+                          arrow
+                        >
+                          <Chip label="Failed" color="error" size="small" />
+                        </Tooltip>
                         <IconButton
                           size="small"
                           color="error"

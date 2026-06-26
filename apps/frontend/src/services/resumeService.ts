@@ -26,6 +26,7 @@ export interface ResumeResponse {
   resumeJson?: Record<string, unknown>;
   conversationId?: string;
   status?: 'in_progress' | 'completed' | 'failed';
+  failureMessage?: string;
   aiModel?: 'openai' | 'claude';
   aiVersion?: string;
   generationSource?: 'ai' | 'manual';

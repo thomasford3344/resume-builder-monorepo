@@ -12,7 +12,7 @@ export class ResumesGateway {
     this.server.emit('generate:done', { id });
   }
 
-  emitFailed(id: string) {
-    this.server.emit('generate:failed', { id });
+  emitFailed(id: string, message?: string) {
+    this.server.emit('generate:failed', { id, message });
   }
 }

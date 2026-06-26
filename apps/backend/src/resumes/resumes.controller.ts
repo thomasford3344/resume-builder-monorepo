@@ -39,6 +39,7 @@ import {
 } from './dto/answer-questions.dto';
 import { type FromJsonDto, fromJsonSchema } from './dto/from-json.dto';
 import { sendAttachment } from '../common/download-headers';
+import { formatAiProviderError } from '../ai/format-ai-error';
 
 @Controller('resumes')
 export class ResumesController {
@@ -144,12 +145,12 @@ export class ResumesController {
           generateResumeDto.industry,
         )
         .catch((error) => {
-          const message =
-            error?.message || 'Failed to generate resume in background';
+          const message = formatAiProviderError(error);
           console.error('Error generating resume in background:', message);
           void this.resumesService.markResumeFailed(
             resumeRecord._id.toString(),
             req.user._id,
+            message,
           );
         });
     } catch (error) {
