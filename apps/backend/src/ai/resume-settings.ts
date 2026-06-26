@@ -129,6 +129,40 @@ export function getResumePdfSettings(
   };
 }
 
+const SKILL_CATEGORY_ALIASES: Record<SkillCategory, readonly string[]> = {
+  Languages: ['Languages'],
+  Backend: ['Backend'],
+  Frontend: ['Frontend'],
+  'AI & Automation': ['AI & Automation'],
+  'Cloud & DevOps': ['Cloud & DevOps'],
+  Database: ['Database', 'Databases'],
+  Tools: ['Tools'],
+  Testing: ['Testing'],
+  Industry: ['Industry', 'Industries'],
+  Methodology: ['Methodology', 'Methodologies'],
+  Mobile: ['Mobile'],
+};
+
+const SKILL_CATEGORY_PDF_LABELS: Partial<Record<SkillCategory, string>> = {
+  Database: 'Databases',
+  Industry: 'Industries',
+  Methodology: 'Methodologies',
+};
+
+function resolveSkillCategory(category: string): SkillCategory | null {
+  for (const canonicalCategory of SKILL_CATEGORIES) {
+    if (SKILL_CATEGORY_ALIASES[canonicalCategory].includes(category)) {
+      return canonicalCategory;
+    }
+  }
+
+  return null;
+}
+
+function getSkillCategoryPdfLabel(category: SkillCategory): string {
+  return SKILL_CATEGORY_PDF_LABELS[category] ?? category;
+}
+
 export function filterSkillsForPdf(
   skills: Array<{ category: string; items: string[] }>,
   enabledCategories: SkillCategory[] | undefined,
@@ -141,9 +175,32 @@ export function filterSkillsForPdf(
 
   const normalizedSkills = Array.isArray(skills) ? skills : [];
 
-  const skillsByCategory = new Map(
-    normalizedSkills.map((skill) => [skill.category, skill]),
-  );
+  const skillsByCategory = new Map<
+    SkillCategory,
+    { category: string; items: string[] }
+  >();
+
+  for (const skill of normalizedSkills) {
+    const canonicalCategory = resolveSkillCategory(skill.category);
+    if (
+      !canonicalCategory ||
+      !Array.isArray(skill.items) ||
+      skill.items.length === 0
+    ) {
+      continue;
+    }
+
+    const existing = skillsByCategory.get(canonicalCategory);
+    if (existing) {
+      existing.items.push(...skill.items);
+      continue;
+    }
+
+    skillsByCategory.set(canonicalCategory, {
+      category: getSkillCategoryPdfLabel(canonicalCategory),
+      items: [...skill.items],
+    });
+  }
 
   return SKILL_CATEGORIES.filter((category) => enabled.has(category))
     .map((category) => skillsByCategory.get(category))

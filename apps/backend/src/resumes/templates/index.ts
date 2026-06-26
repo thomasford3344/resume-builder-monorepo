@@ -11,6 +11,8 @@ export {
   type ResumePdfSettings,
 } from '../../ai/resume-settings';
 
+export { getCertificationText } from './certification-utils';
+
 export interface ResumeData {
   name?: string;
   title?: string;
@@ -38,5 +40,20 @@ export interface ResumeData {
     date_range?: string;
     location?: string;
   }>;
+  certifications?: Array<
+    | string
+    | {
+        name?: string;
+        title?: string;
+        certification?: string;
+        issuer?: string;
+        organization?: string;
+        authority?: string;
+        date?: string;
+        date_range?: string;
+        issued_date?: string;
+        year?: string;
+      }
+  >;
   cover_letter?: string;
 }

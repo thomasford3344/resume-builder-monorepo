@@ -67,6 +67,7 @@ import { alpha } from "@mui/material/styles";
 import {
   DEFAULT_RESUME_SETTINGS,
   SKILL_CATEGORIES,
+  getSkillCategoryLabel,
   resolveResumeSettings,
   resumeSettingsEqual,
   type ResumeSettings,
@@ -1183,7 +1184,7 @@ const Profile: React.FC = () => {
           {SKILL_CATEGORIES.map((category) => (
             <ResumeCheckboxRow
               key={category}
-              label={category}
+              label={getSkillCategoryLabel(category)}
               checked={resumeSettingsForm.skillCategories.includes(category)}
               onChange={handleSkillCategoryToggle(category)}
             />

@@ -1,7 +1,7 @@
 import * as PDFKit from 'pdfkit';
 import { existsSync } from 'fs';
 import { join } from 'path';
-import { ResumeData, DEFAULT_RESUME_PDF_SETTINGS, filterSkillsForPdf, type ResumePdfSettings } from '.';
+import { ResumeData, DEFAULT_RESUME_PDF_SETTINGS, filterSkillsForPdf, getCertificationText, type ResumePdfSettings } from '.';
 
 const titleColor = "#4A4A4A"
 const contentColor = "#2C3E50"
@@ -44,6 +44,7 @@ export class ResumePDFTemplate5 {
       skills: data.skills,
       experience: data.experience || [],
       education: data.education || [],
+      certifications: Array.isArray(data.certifications) ? data.certifications : [],
     };
   }
 
@@ -751,7 +752,6 @@ export class ResumePDFTemplate5 {
           .text(` | ${institution} | Graduated ${graduatedMonth} ${graduatedYear}`, this.marginX, doc.y, {
             width: this.contentWidth,
             align: 'left',
-            continued: true
           });
       } else {
         doc
@@ -762,11 +762,33 @@ export class ResumePDFTemplate5 {
           .text(` | ${institution} | ${dateRange}`, this.marginX, doc.y, {
             width: this.contentWidth,
             align: 'left',
-            continued: true
           });
       }
       doc.moveDown(1);
     }
+  }
+
+  private _addCertifications(doc: any) {
+    const certifications = this.data.certifications || [];
+    if (certifications.length === 0) {
+      return;
+    }
+
+    const items = certifications
+      .map((cert) => getCertificationText(cert))
+      .filter(Boolean);
+
+    if (items.length === 0) {
+      return;
+    }
+
+    this._ensureSpaceForSubtitleSection(doc, items);
+    this._addSectionHeader(doc, 'CERTIFICATIONS');
+    this._addBulletItems(doc, items, {
+      contentColor: defaultColor,
+      lineGap: 3,
+    });
+    doc.moveDown(1);
   }
 
   async generate(): Promise<Buffer> {
@@ -802,6 +824,7 @@ export class ResumePDFTemplate5 {
         this._addSkills(doc);
         this._addExperience(doc);
         this._addEducation(doc);
+        this._addCertifications(doc);
 
         doc.end();
       } catch (error) {

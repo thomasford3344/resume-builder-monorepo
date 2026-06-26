@@ -331,6 +331,19 @@ export class ResumesController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Post(':id/retry')
+  async retry(@Request() req, @Param('id') id: string) {
+    await this.resumesService.retryResume(
+      id,
+      req.user._id,
+      req.user.name,
+      req.user.template,
+    );
+
+    return { message: 'Resume generation restarted' };
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Post(':id/generate-cover-letter')
   async generateCoverLetter(
     @Request() req,
