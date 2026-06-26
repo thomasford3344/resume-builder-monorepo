@@ -962,11 +962,10 @@ const Resumes: React.FC = () => {
                 </TableCell>
                 <TableCell align="center">Company Name</TableCell>
                 <TableCell align="center">Role Type</TableCell>
-                {/* <TableCell align="center">AI Model</TableCell> */}
-                <TableCell align="center">AI Version</TableCell>
                 <TableCell align="center">Job Description</TableCell>
+                <TableCell align="center">AI Version</TableCell>
                 <TableCell align="center">Status</TableCell>
-                <TableCell align="center">Created Date</TableCell>
+                <TableCell align="center">Date</TableCell>
                 <TableCell align="center" colSpan={5}>
                   Actions
                 </TableCell>
@@ -989,18 +988,6 @@ const Resumes: React.FC = () => {
                   </TableCell>
                   <TableCell align="center">{resume.companyName}</TableCell>
                   <TableCell align="center">{resume.roleType}</TableCell>
-                  {/* <TableCell align="center">
-                    {resume.aiModel
-                      ? getProviderLabel(resume.aiModel as AiProvider)
-                      : "-"}
-                  </TableCell> */}
-                  <TableCell align="center">
-                    <AiVersionBadge
-                      aiModel={resume.aiModel}
-                      aiVersion={resume.aiVersion}
-                      generationSource={resume.generationSource}
-                    />
-                  </TableCell>
                   <TableCell align="center">
                     {resume.jobDescription ? (
                       <IconButton
@@ -1016,6 +1003,13 @@ const Resumes: React.FC = () => {
                     ) : (
                       "-"
                     )}
+                  </TableCell>
+                  <TableCell align="center">
+                    <AiVersionBadge
+                      aiModel={resume.aiModel}
+                      aiVersion={resume.aiVersion}
+                      generationSource={resume.generationSource}
+                    />
                   </TableCell>
                   <TableCell align="center">
                     {resume.status === "in_progress" ? (

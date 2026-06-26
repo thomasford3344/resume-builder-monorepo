@@ -416,7 +416,7 @@ const CreateResume: React.FC = () => {
             />
             <TextField
               {...jsonForm.register("roleType")}
-              label="Job Title"
+              label="Role Type"
               fullWidth
               error={!!jsonForm.formState.errors.roleType}
               helperText={jsonForm.formState.errors.roleType?.message}
