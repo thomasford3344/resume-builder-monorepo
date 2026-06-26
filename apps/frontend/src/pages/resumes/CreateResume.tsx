@@ -450,6 +450,7 @@ const CreateResume: React.FC = () => {
                 jsonForm.formState.errors.jsonContent?.message ??
                 "Paste the full resume JSON object"
               }
+              required
               placeholder='{"name": "...", "title": "...", ...}'
               disabled={isSubmitting}
               size="small"

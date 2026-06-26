@@ -57,6 +57,9 @@ export class Resume {
   status?: string;
 
   @Prop({ required: false })
+  failureMessage?: string;
+
+  @Prop({ required: false })
   coverLetter?: string;
 
   @Prop({

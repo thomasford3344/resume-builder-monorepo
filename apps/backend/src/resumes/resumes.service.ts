@@ -22,6 +22,7 @@ import {
 import { AiService } from '../ai/ai.service';
 import { UsersService } from '../users/users.service';
 import { getResumePdfSettings } from '../ai/resume-settings';
+import { formatAiProviderError } from '../ai/format-ai-error';
 
 const VALID_TEMPLATES = [
   'template1',
@@ -92,11 +93,22 @@ export class ResumesService {
     }
   }
 
-  async markResumeFailed(resumeId: string, userId: string): Promise<void> {
+  async markResumeFailed(
+    resumeId: string,
+    userId: string,
+    failureMessage?: string,
+  ): Promise<void> {
+    const message = failureMessage?.trim() || undefined;
     await this.resumeModel
-      .updateOne({ _id: resumeId, userId }, { status: 'failed' })
+      .updateOne(
+        { _id: resumeId, userId },
+        {
+          status: 'failed',
+          ...(message ? { failureMessage: message } : {}),
+        },
+      )
       .exec();
-    this.gateway.emitFailed(resumeId);
+    this.gateway.emitFailed(resumeId, message);
   }
 
   async retryResume(
@@ -127,7 +139,10 @@ export class ResumesService {
     );
 
     await this.resumeModel
-      .updateOne({ _id: resumeId, userId }, { status: 'in_progress' })
+      .updateOne(
+        { _id: resumeId, userId },
+        { status: 'in_progress', $unset: { failureMessage: '' } },
+      )
       .exec();
 
     this.generateResume(
@@ -137,9 +152,9 @@ export class ResumesService {
       userTemplate,
       'default',
     ).catch((error) => {
-      const message = error?.message || 'Failed to retry resume generation';
+      const message = formatAiProviderError(error);
       console.error('Error retrying resume generation:', message);
-      void this.markResumeFailed(resumeId, userId);
+      void this.markResumeFailed(resumeId, userId, message);
     });
   }
 
@@ -253,7 +268,7 @@ export class ResumesService {
 
     const resume = await this.resumeModel.findOneAndUpdate(
       { _id: resumeId, userId },
-      { $set: updateData },
+      { $set: updateData, $unset: { failureMessage: '' } },
       { new: true },
     ).exec();
 
@@ -290,14 +305,10 @@ export class ResumesService {
         throw new NotFoundException(`User with ID ${userId} not found`);
       }
       if (!user.instructions || !user.instructions.trim()) {
-        // Update resume status to failed
-        await this.resumeModel.updateOne(
-          { _id: resumeId, userId },
-          { status: 'failed' },
-        ).exec();
-        throw new Error(
-          `User ${user.name} (${user.email}) does not have instructions configured. Please set instructions in user management.`,
-        );
+        const message =
+          'No resume prompt configured. Add your resume prompt in Profile settings before generating a resume.';
+        await this.markResumeFailed(resumeId, userId, message);
+        throw new Error(message);
       }
 
       instructions = user.instructions;
