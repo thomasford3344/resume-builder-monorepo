@@ -250,6 +250,11 @@ export const generateCoverLetter = async (id: string) => {
   return fetchBlobPost(`/api/resumes/${id}/generate-cover-letter`);
 };
 
+export const retryResume = async (id: string) => {
+  const res = await api.post<{ message: string }>(`/api/resumes/${id}/retry`);
+  return res.data;
+};
+
 export interface FromJsonDto {
   companyName: string;
   roleType: string;

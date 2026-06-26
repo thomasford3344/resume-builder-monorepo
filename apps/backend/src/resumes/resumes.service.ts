@@ -99,6 +99,50 @@ export class ResumesService {
     this.gateway.emitFailed(resumeId);
   }
 
+  async retryResume(
+    resumeId: string,
+    userId: string,
+    userName: string,
+    userTemplate?: string,
+  ): Promise<void> {
+    const resume = await this.resumeModel
+      .findOne({ _id: resumeId, userId })
+      .exec();
+
+    if (!resume) {
+      throw new NotFoundException('Resume not found');
+    }
+
+    if (resume.status !== 'failed') {
+      throw new BadRequestException('Only failed resumes can be retried');
+    }
+
+    if (resume.generationSource === 'manual') {
+      throw new BadRequestException('Manual resumes cannot be retried');
+    }
+
+    await this.validateApiKeyForGeneration(
+      userId,
+      (resume.aiModel as 'openai' | 'claude') || 'openai',
+    );
+
+    await this.resumeModel
+      .updateOne({ _id: resumeId, userId }, { status: 'in_progress' })
+      .exec();
+
+    this.generateResume(
+      resumeId,
+      userId,
+      userName,
+      userTemplate,
+      'default',
+    ).catch((error) => {
+      const message = error?.message || 'Failed to retry resume generation';
+      console.error('Error retrying resume generation:', message);
+      void this.markResumeFailed(resumeId, userId);
+    });
+  }
+
   async create(
     userId: string,
     userName: string,

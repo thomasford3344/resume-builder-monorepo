@@ -2,7 +2,7 @@ import * as PDFKit from 'pdfkit';
 import sharp from 'sharp';
 import { existsSync } from 'fs';
 import { join } from 'path';
-import { ResumeData, DEFAULT_RESUME_PDF_SETTINGS, filterSkillsForPdf, type ResumePdfSettings } from '.';
+import { ResumeData, DEFAULT_RESUME_PDF_SETTINGS, filterSkillsForPdf, getCertificationText, type ResumePdfSettings } from '.';
 
 export class ResumePDFTemplate2 {
   private data: ResumeData;
@@ -55,6 +55,7 @@ export class ResumePDFTemplate2 {
       skills: data.skills,
       experience: data.experience || [],
       education: data.education || [],
+      certifications: Array.isArray(data.certifications) ? data.certifications : [],
     };
   }
 
@@ -780,6 +781,53 @@ export class ResumePDFTemplate2 {
     }
   }
 
+  private _addCertifications(doc: any) {
+    const certifications = this.data.certifications || [];
+    if (certifications.length === 0) {
+      return;
+    }
+
+    const items = certifications
+      .map((cert) => getCertificationText(cert))
+      .filter(Boolean);
+
+    if (items.length === 0) {
+      return;
+    }
+
+    this._addSectionHeader(doc, 'CERTIFICATIONS');
+
+    const contentFontSize = 11;
+    const bulletX = this.marginX + 18;
+    const textWidth = this.contentWidth - 18;
+
+    doc.font(this.fontName).fontSize(contentFontSize).fillColor('#333333');
+
+    for (const item of items) {
+      const bulletText = `• ${String(item).replace(/\n/g, ' ')}`;
+      const estimatedHeight =
+        this._estimateTextHeight(
+          doc,
+          bulletText,
+          textWidth,
+          contentFontSize,
+        ) + 2;
+
+      if (this.pageHeight - this.marginB - doc.y < estimatedHeight) {
+        doc.addPage();
+      }
+
+      doc.text(bulletText, bulletX, doc.y, {
+        width: textWidth,
+        align: 'left',
+        paragraphGap: 2,
+        lineGap: 3,
+      });
+    }
+
+    doc.moveDown(1);
+  }
+
   private async _drawHeaderImage(doc: any) {
     if (
       this.headerImagePath &&
@@ -862,6 +910,7 @@ export class ResumePDFTemplate2 {
         this._addSkills(doc);
         this._addExperience(doc);
         this._addEducation(doc);
+        this._addCertifications(doc);
 
         doc.end();
       } catch (error) {

@@ -1,11 +1,53 @@
 import * as PDFKit from 'pdfkit';
 import { existsSync } from 'fs';
 import { join } from 'path';
-import { ResumeData, DEFAULT_RESUME_PDF_SETTINGS, filterSkillsForPdf, type ResumePdfSettings } from '.';
+import { ResumeData, DEFAULT_RESUME_PDF_SETTINGS, filterSkillsForPdf, getCertificationText, type ResumePdfSettings } from '.';
 
 const titleColor = "#4A4A4A"
 const contentColor = "#2C3E50"
 const defaultColor = "#000000"
+
+const MONTH_ABBREVIATIONS = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+] as const;
+
+const MONTH_NAME_TO_ABBREV: Record<string, string> = {
+  jan: 'Jan',
+  january: 'Jan',
+  feb: 'Feb',
+  february: 'Feb',
+  mar: 'Mar',
+  march: 'Mar',
+  apr: 'Apr',
+  april: 'Apr',
+  may: 'May',
+  jun: 'Jun',
+  june: 'Jun',
+  jul: 'Jul',
+  july: 'Jul',
+  aug: 'Aug',
+  august: 'Aug',
+  sep: 'Sep',
+  sept: 'Sep',
+  september: 'Sep',
+  oct: 'Oct',
+  october: 'Oct',
+  nov: 'Nov',
+  november: 'Nov',
+  dec: 'Dec',
+  december: 'Dec',
+};
 
 export class ResumePDFTemplate6 {
   private data: ResumeData;
@@ -44,7 +86,85 @@ export class ResumePDFTemplate6 {
       skills: data.skills,
       experience: data.experience || [],
       education: data.education || [],
+      certifications: Array.isArray(data.certifications) ? data.certifications : [],
     };
+  }
+
+  private _formatDatePart(part: string): string {
+    const text = part.trim();
+    if (!text) {
+      return '';
+    }
+
+    if (/^(present|current|now)$/i.test(text)) {
+      return 'Present';
+    }
+
+    const slashMonthYearMatch = text.match(/^(\d{1,2})\/(\d{4})$/);
+    if (slashMonthYearMatch) {
+      const month = Number.parseInt(slashMonthYearMatch[1], 10);
+      const year = slashMonthYearMatch[2];
+      const monthName = MONTH_ABBREVIATIONS[month - 1];
+      if (monthName) {
+        return `${monthName} ${year}`;
+      }
+    }
+
+    const slashFullDateMatch = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (slashFullDateMatch) {
+      const month = Number.parseInt(slashFullDateMatch[1], 10);
+      const year = slashFullDateMatch[3];
+      const monthName = MONTH_ABBREVIATIONS[month - 1];
+      if (monthName) {
+        return `${monthName} ${year}`;
+      }
+    }
+
+    const monthYearMatch = text.match(/^([A-Za-z.]+)\s+(\d{4})$/);
+    if (monthYearMatch) {
+      const monthName =
+        MONTH_NAME_TO_ABBREV[monthYearMatch[1].replace(/\./g, '').toLowerCase()];
+      if (monthName) {
+        return `${monthName} ${monthYearMatch[2]}`;
+      }
+    }
+
+    return text;
+  }
+
+  private _formatDateRange(dateRange: string): string {
+    const trimmed = dateRange.trim();
+    if (!trimmed) {
+      return '';
+    }
+
+    const rangeMatch = trimmed.match(/^(.+?)\s*(?:-|–|—|\sto\s)\s*(.+)$/i);
+    if (!rangeMatch) {
+      return this._formatDatePart(trimmed);
+    }
+
+    const start = this._formatDatePart(rangeMatch[1]);
+    const end = this._formatDatePart(rangeMatch[2]);
+
+    if (start && end) {
+      return `${start} – ${end}`;
+    }
+
+    return start || end || trimmed;
+  }
+
+  private _formatGraduationDate(dateRange: string): string {
+    const trimmed = dateRange.trim();
+    if (!trimmed) {
+      return '';
+    }
+
+    const rangeMatch = trimmed.match(/^(.+?)\s*(?:-|–|—|\sto\s)\s*(.+)$/i);
+    if (rangeMatch) {
+      return this._formatDatePart(rangeMatch[2]);
+    }
+
+    return this._formatDatePart(trimmed);
   }
 
   private _findFonts() {
@@ -350,7 +470,7 @@ export class ResumePDFTemplate6 {
   }
 
   private _addSummary(doc: any) {
-    this._addSectionHeader(doc, 'SUMMARY');
+    this._addSectionHeader(doc, 'PROFESSIONAL SUMMARY');
     const summary = (this.data.summary || '').replace(/\n/g, ' ');
 
     // doc.font(this.fontName).fontSize(11).fillColor('#333333').text(summary, {
@@ -373,7 +493,7 @@ export class ResumePDFTemplate6 {
       return;
     }
 
-    this._addSectionHeader(doc, 'SKILLS');
+    this._addSectionHeader(doc, 'CORE TECHNOLOGIES');
 
     // doc.font(this.fontName).fontSize(11).fillColor('#333333');
     doc.font(this.fontName).fontSize(11).fillColor(defaultColor);
@@ -497,7 +617,7 @@ export class ResumePDFTemplate6 {
     }
 
     const contentFontSize = 11;
-    const bulletX = options.bulletX ?? this.marginX + 18;
+    const bulletX = options.bulletX ?? this.marginX;
     const textWidth = options.textWidth ?? this.contentWidth;
     const contentColor = options.contentColor ?? '#333333';
 
@@ -548,7 +668,7 @@ export class ResumePDFTemplate6 {
   }
 
   private _addExperience(doc: any) {
-    this._addSectionHeader(doc, 'EXPERIENCE');
+    this._addSectionHeader(doc, 'PROFESSIONAL EXPERIENCE');
     const experiences = this.data.experience || [];
 
     for (const exp of experiences) {
@@ -574,19 +694,8 @@ export class ResumePDFTemplate6 {
         doc.addPage();
       }
 
-      // Render job title
-      doc
-        .font(this.fontBold)
-        .fontSize(titleFontSize)
-        // .fillColor('#2C3E50')
-        .fillColor(defaultColor)
-        .text(exp.title || '', this.marginX, doc.y, {
-          width: this.contentWidth,
-          align: 'left',
-        });
-
       const company = exp.company || '';
-      const dateRange = exp.date_range || '';
+      const dateRange = this._formatDateRange(exp.date_range || '');
       // const location = exp.location || '';
       const location = exp.job_type || '';
       const companyText = company.trim();
@@ -613,27 +722,54 @@ export class ResumePDFTemplate6 {
       }
 
       // Render company text on the left
+      const expTitle = (exp.title || '').trim();
+      const headerPart = `${companyText}  — ${expTitle}`;
+      const fullLine = dateRange ? `${headerPart} | ${dateRange}` : headerPart;
 
       doc
-        .font(this.fontName)
+        .font(this.fontBoldItalic)
         .fontSize(companyFontSize)
-        // .fillColor('#555555')
-        .fillColor(defaultColor)
-        .text(companyText, this.marginX, lineY, {
-          width: col1Width,
+        .fillColor(defaultColor);
+
+      const fitsOnOneLine = doc.widthOfString(fullLine) <= this.contentWidth;
+
+      if (!fitsOnOneLine && dateRange) {
+        const headerWithPipe = `${headerPart} |`;
+        const headerWithPipeFits =
+          doc.widthOfString(headerWithPipe) <= this.contentWidth;
+
+        if (headerWithPipeFits) {
+          doc.text(headerWithPipe, this.marginX, lineY, {
+            width: this.contentWidth,
+            align: 'left',
+            lineGap: 3,
+          });
+          doc.text(dateRange, this.marginX, doc.y, {
+            width: this.contentWidth,
+            align: 'left',
+            lineGap: 3,
+          });
+        } else {
+          doc.text(headerPart, this.marginX, lineY, {
+            width: this.contentWidth,
+            align: 'left',
+            lineGap: 3,
+          });
+          doc.text(`| ${dateRange}`, this.marginX, doc.y, {
+            width: this.contentWidth,
+            align: 'left',
+            lineGap: 3,
+          });
+        }
+      } else {
+        doc.text(fullLine, this.marginX, lineY, {
+          width: this.contentWidth,
           align: 'left',
+          lineGap: 3,
         });
+      }
 
-      doc
-        .font(this.fontItalic)
-        .fontSize(companyFontSize)
-        .text(dateLocation, this.marginX + col1Width, lineY, {
-          width: col2Width,
-          align: 'right',
-        });
-
-      doc.y = lineY + lineHeight;
-      doc.moveDown(0.5);
+      doc.moveDown(0.1);
 
       const responsibilities = exp.responsibilities || [];
       if (responsibilities.length > 0) {
@@ -672,7 +808,7 @@ export class ResumePDFTemplate6 {
         this._addCompanySkills(doc, exp.skills);
       }
 
-      doc.moveDown(0.3);
+      doc.moveDown(0.7);
     }
     doc.moveDown(0.7);
   }
@@ -680,90 +816,74 @@ export class ResumePDFTemplate6 {
   private _addEducation(doc: any) {
     this._addSectionHeader(doc, 'EDUCATION');
     const educationList = this.data.education || [];
+    const institutionFontSize = 11.5;
+    const detailFontSize = 11.5;
+    const lineGap = 3;
 
     for (const edu of educationList) {
-      // Calculate space needed for this education entry
-      const degreeFontSize = 12.5;
-      const institutionFontSize = 11.5;
-      const degreeHeight = degreeFontSize * 1.2;
-      const institutionHeight = institutionFontSize * 1.2;
-      const spacingAfterInstitution = institutionFontSize * 1; // moveDown(1)
-      const minContentSpace = institutionFontSize * 1; // At least 1 line of spacing
+      const institution = (edu.institution || '').trim();
+      const degree = (edu.degree || '').trim();
+      const graduationDate = this._formatGraduationDate(edu.date_range || '');
+      const degreeLine = graduationDate
+        ? `${degree} – ${graduationDate}`
+        : degree;
 
-      // Minimum space needed: degree + institution + spacing
-      const minSpaceNeeded =
-        degreeHeight +
-        institutionHeight +
-        spacingAfterInstitution +
-        minContentSpace;
+      const minSpaceNeeded = (institutionFontSize + detailFontSize) * 2.4;
+      const spaceAvailable = this.pageHeight - this.marginB - doc.y;
 
-      const currentY = doc.y;
-      const spaceAvailable = this.pageHeight - this.marginB - currentY;
-
-      // Check if we need a page break before rendering the degree
       if (spaceAvailable < minSpaceNeeded) {
         doc.addPage();
       }
 
-      // Render degree title
-      doc
-        .font(this.fontBold)
-        .fontSize(degreeFontSize)
-        // .fillColor('#2C3E50')
-        .fillColor(defaultColor)
-        .text(edu.degree || '', this.marginX, doc.y, {
-          width: this.contentWidth,
-          align: 'left',
-        });
-
-      const institution = edu.institution || '';
-      const dateRange = edu.date_range || '';
-      const location = edu.location || '';
-      const institutionText = institution.trim();
-      const dateLocation = location
-        ? `${dateRange} | ${location}`.trim()
-        : dateRange.trim();
-
-      const col1Width = this.contentWidth * 0.5;
-      const col2Width = this.contentWidth * 0.5;
-      // Get current Y position
-      let lineY = doc.y;
-      const lineHeight = doc.currentLineHeight(true) || 13;
-
-      // Check if we need a page break - ensure institution and date stay together
-      // Calculate if there's enough space on current page
-      const spaceNeededForInstitution =
-        institutionHeight + spacingAfterInstitution + minContentSpace;
-      const spaceAvailableForInstitution =
-        this.pageHeight - this.marginB - lineY;
-
-      if (spaceAvailableForInstitution < spaceNeededForInstitution) {
-        // Not enough space - add a new page
-        doc.addPage();
-        lineY = this.marginT; // Start at top margin of new page
+      if (institution) {
+        doc
+          .font(this.fontBoldItalic)
+          .fontSize(institutionFontSize)
+          .fillColor(defaultColor)
+          .text(institution, this.marginX, doc.y, {
+            width: this.contentWidth,
+            align: 'left',
+            lineGap,
+          });
       }
 
-      doc
-        .font(this.fontName)
-        .fontSize(11.5)
-        // .fillColor('#555555')
-        .fillColor(defaultColor)
-        .text(institutionText, this.marginX, lineY, {
-          width: col1Width,
-          align: 'left',
-        });
+      if (degreeLine) {
+        doc
+          .font(this.fontName)
+          .fontSize(detailFontSize)
+          .fillColor(defaultColor)
+          .text(degreeLine, this.marginX, doc.y, {
+            width: this.contentWidth,
+            align: 'left',
+            lineGap,
+          });
+      }
 
-      doc
-        .font(this.fontItalic)
-        .fontSize(11.5)
-        .text(dateLocation, this.marginX + col1Width, lineY, {
-          width: col2Width,
-          align: 'right',
-        });
-
-      doc.y = lineY + lineHeight;
       doc.moveDown(1);
     }
+  }
+
+  private _addCertifications(doc: any) {
+    const certifications = this.data.certifications || [];
+    if (certifications.length === 0) {
+      return;
+    }
+
+    const items = certifications
+      .map((cert) => getCertificationText(cert))
+      .filter(Boolean);
+
+    if (items.length === 0) {
+      return;
+    }
+
+    this._ensureSpaceForSubtitleSection(doc, items);
+    this._addSectionHeader(doc, 'CERTIFICATIONS');
+    this._addBulletItems(doc, items, {
+      contentColor: defaultColor,
+      lineGap: 3,
+    });
+    doc.moveDown(1);
   }
 
   async generate(): Promise<Buffer> {
@@ -799,6 +919,7 @@ export class ResumePDFTemplate6 {
         this._addSkills(doc);
         this._addExperience(doc);
         this._addEducation(doc);
+        this._addCertifications(doc);
 
         doc.end();
       } catch (error) {

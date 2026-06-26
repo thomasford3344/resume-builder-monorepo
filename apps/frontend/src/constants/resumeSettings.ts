@@ -14,6 +14,16 @@ export const SKILL_CATEGORIES = [
 
 export type SkillCategory = (typeof SKILL_CATEGORIES)[number];
 
+const SKILL_CATEGORY_LABELS: Partial<Record<SkillCategory, string>> = {
+  Database: "Databases",
+  Industry: "Industries",
+  Methodology: "Methodologies",
+};
+
+export function getSkillCategoryLabel(category: SkillCategory): string {
+  return SKILL_CATEGORY_LABELS[category] ?? category;
+}
+
 export interface ResumeSettings {
   showTitle: boolean;
   showSubTitle: boolean;

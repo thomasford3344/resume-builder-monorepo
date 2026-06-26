@@ -481,7 +481,7 @@ Each responsibility must:
 - Start with a strong action verb.
 - Include at least 1 metric.
 - Describe ownership, scope, systems, stakeholders, architecture, delivery, or technical responsibility.
-- Include at least 1 JD-relevant technology, tool, methodology, or domain term.
+- Include at least 1 JD-relevant technology, tool, Methodologies, or domain term.
 - Be realistic for the role and date range.
 - Be different from the achievement bullets.
 
