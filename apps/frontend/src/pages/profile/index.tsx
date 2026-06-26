@@ -58,10 +58,16 @@ import {
   resolveUserDefaultFromJsonAi,
 } from "../../constants/aiModels";
 import { useThemeMode } from "../../components/common/ThemeContext";
+import {
+  ALERT_POSITIONS,
+  useToastPosition,
+  type AlertPosition,
+} from "../../components/common/ToastPositionContext";
 import { alpha } from "@mui/material/styles";
 import {
   DEFAULT_RESUME_SETTINGS,
   SKILL_CATEGORIES,
+  getSkillCategoryLabel,
   resolveResumeSettings,
   resumeSettingsEqual,
   type ResumeSettings,
@@ -197,6 +203,8 @@ function ResumeCheckboxRow({
 
 const Profile: React.FC = () => {
   const { mode, setMode } = useThemeMode();
+  const { position: alertPosition, setPosition: setAlertPosition } =
+    useToastPosition();
   const skipAutoSaveRef = React.useRef(true);
   const [user, setUser] = React.useState<UserResponse | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -236,7 +244,7 @@ const Profile: React.FC = () => {
   const [changingPassword, setChangingPassword] = React.useState(false);
   const [downloadingTemplatePreview, setDownloadingTemplatePreview] =
     React.useState(false);
-  const templateOptions = [...Array(5)].map((_, index) => ({
+  const templateOptions = [...Array(6)].map((_, index) => ({
     value: `template${index + 1}`,
     label: `Template ${index + 1}`,
   }));
@@ -734,6 +742,48 @@ const Profile: React.FC = () => {
 
       <Box>
         <Typography variant="subtitle1" gutterBottom>
+          Alert position
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+          Choose where toast notifications appear in the app.
+        </Typography>
+        <ToggleButtonGroup
+          value={alertPosition}
+          exclusive
+          onChange={(_event, nextPosition: AlertPosition | null) => {
+            if (nextPosition) {
+              setAlertPosition(nextPosition);
+              window.setTimeout(() => {
+                toast.info("This is a sample alert.");
+              }, 200);
+            }
+          }}
+          size="small"
+          sx={{
+            width: "fit-content",
+            "& .MuiToggleButton-root": {
+              textTransform: "none",
+              px: 2,
+            },
+            "& .MuiToggleButton-root.Mui-selected": {
+              backgroundColor: "primary.main",
+              color: "primary.contrastText",
+              "&:hover": {
+                backgroundColor: "primary.dark",
+              },
+            },
+          }}
+        >
+          {ALERT_POSITIONS.map((option) => (
+            <ToggleButton key={option.value} value={option.value}>
+              {option.label}
+            </ToggleButton>
+          ))}
+        </ToggleButtonGroup>
+      </Box>
+
+      <Box>
+        <Typography variant="subtitle1" gutterBottom>
           Default AI Model
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
@@ -1134,7 +1184,7 @@ const Profile: React.FC = () => {
           {SKILL_CATEGORIES.map((category) => (
             <ResumeCheckboxRow
               key={category}
-              label={category}
+              label={getSkillCategoryLabel(category)}
               checked={resumeSettingsForm.skillCategories.includes(category)}
               onChange={handleSkillCategoryToggle(category)}
             />

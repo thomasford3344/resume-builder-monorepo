@@ -3,12 +3,15 @@ export { ResumePDFTemplate2 } from './template_2';
 export { ResumePDFTemplate3 } from './template_3';
 export { ResumePDFTemplate4 } from './template_4';
 export { ResumePDFTemplate5 } from './template_5';
+export { ResumePDFTemplate6 } from './template_6';
 
 export {
   DEFAULT_RESUME_PDF_SETTINGS,
   filterSkillsForPdf,
   type ResumePdfSettings,
 } from '../../ai/resume-settings';
+
+export { getCertificationText } from './certification-utils';
 
 export interface ResumeData {
   name?: string;
@@ -37,5 +40,20 @@ export interface ResumeData {
     date_range?: string;
     location?: string;
   }>;
+  certifications?: Array<
+    | string
+    | {
+        name?: string;
+        title?: string;
+        certification?: string;
+        issuer?: string;
+        organization?: string;
+        authority?: string;
+        date?: string;
+        date_range?: string;
+        issued_date?: string;
+        year?: string;
+      }
+  >;
   cover_letter?: string;
 }

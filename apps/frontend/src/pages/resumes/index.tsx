@@ -42,6 +42,7 @@ import {
   Logout as LogoutIcon,
   LightMode as LightModeIcon,
   DarkMode as DarkModeIcon,
+  Refresh as RefreshIcon,
 } from "@mui/icons-material";
 import { OpenAI, Claude } from "@lobehub/icons";
 import { Link, useNavigate } from "react-router";
@@ -52,6 +53,7 @@ import {
   downloadResume,
   downloadResumeJSON,
   generateCoverLetter,
+  retryResume,
   type ResumeResponse,
   type FilterResumeParams,
 } from "../../services/resumeService";
@@ -179,6 +181,9 @@ const Resumes: React.FC = () => {
   const [generatingCoverLetterId, setGeneratingCoverLetterId] = React.useState<
     string | null
   >(null);
+  const [retryingResumeId, setRetryingResumeId] = React.useState<string | null>(
+    null,
+  );
   const [questionsResumeId, setQuestionsResumeId] = React.useState<
     string | null
   >(null);
@@ -551,6 +556,29 @@ const Resumes: React.FC = () => {
       toast.error(message);
     } finally {
       setGeneratingCoverLetterId(null);
+    }
+  };
+
+  const handleRetryResume = async (id: string) => {
+    setRetryingResumeId(id);
+    try {
+      await retryResume(id);
+      setResumes((prev) =>
+        prev.map((r) => (r._id === id ? { ...r, status: "in_progress" } : r)),
+      );
+      toast.success("Resume generation restarted");
+    } catch (error: unknown) {
+      const err = error as {
+        response?: { data?: { message?: string | string[] } };
+        message?: string;
+      };
+      const rawMessage = err.response?.data?.message ?? err.message;
+      const message = Array.isArray(rawMessage)
+        ? rawMessage.join(", ")
+        : rawMessage || "Failed to retry resume generation";
+      toast.error(message);
+    } finally {
+      setRetryingResumeId(null);
     }
   };
 
@@ -972,22 +1000,33 @@ const Resumes: React.FC = () => {
                     )}
                   </TableCell>
                   <TableCell align="center">
-                    {resume.status === "in_progress" ?
+                    {resume.status === "in_progress" ? (
                       <CircularProgress size={25} thickness={6} />
-                      :
-                      <Chip
-                        label={
-                          resume.status === "completed"
-                            ? "Completed"
-                            : "Failed"
-                        }
-                        color={
-                          resume.status === "completed"
-                            ? "success"
-                            : "error"
-                        }
-                        size="small"
-                      />}
+                    ) : resume.status === "failed" ? (
+                      <Stack
+                        direction="row"
+                        spacing={0.5}
+                        alignItems="center"
+                        justifyContent="center"
+                      >
+                        <Chip label="Failed" color="error" size="small" />
+                        <IconButton
+                          size="small"
+                          color="error"
+                          onClick={() => handleRetryResume(resume._id)}
+                          title="Retry generation"
+                          disabled={retryingResumeId === resume._id}
+                        >
+                          {retryingResumeId === resume._id ? (
+                            <CircularProgress size={18} color="inherit" />
+                          ) : (
+                            <RefreshIcon fontSize="small" />
+                          )}
+                        </IconButton>
+                      </Stack>
+                    ) : (
+                      <Chip label="Completed" color="success" size="small" />
+                    )}
                   </TableCell>
                   <TableCell align="center">
                     {resume.createdAt

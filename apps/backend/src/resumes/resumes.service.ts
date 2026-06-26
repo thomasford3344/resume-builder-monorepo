@@ -15,6 +15,7 @@ import {
   ResumePDFTemplate3,
   ResumePDFTemplate4,
   ResumePDFTemplate5,
+  ResumePDFTemplate6,
   DEFAULT_RESUME_PDF_SETTINGS,
   type ResumePdfSettings,
 } from './templates';
@@ -28,6 +29,7 @@ const VALID_TEMPLATES = [
   'template3',
   'template4',
   'template5',
+  'template6',
 ] as const;
 
 const SAMPLE_RESUME_JSON_PATH = join(
@@ -95,6 +97,50 @@ export class ResumesService {
       .updateOne({ _id: resumeId, userId }, { status: 'failed' })
       .exec();
     this.gateway.emitFailed(resumeId);
+  }
+
+  async retryResume(
+    resumeId: string,
+    userId: string,
+    userName: string,
+    userTemplate?: string,
+  ): Promise<void> {
+    const resume = await this.resumeModel
+      .findOne({ _id: resumeId, userId })
+      .exec();
+
+    if (!resume) {
+      throw new NotFoundException('Resume not found');
+    }
+
+    if (resume.status !== 'failed') {
+      throw new BadRequestException('Only failed resumes can be retried');
+    }
+
+    if (resume.generationSource === 'manual') {
+      throw new BadRequestException('Manual resumes cannot be retried');
+    }
+
+    await this.validateApiKeyForGeneration(
+      userId,
+      (resume.aiModel as 'openai' | 'claude') || 'openai',
+    );
+
+    await this.resumeModel
+      .updateOne({ _id: resumeId, userId }, { status: 'in_progress' })
+      .exec();
+
+    this.generateResume(
+      resumeId,
+      userId,
+      userName,
+      userTemplate,
+      'default',
+    ).catch((error) => {
+      const message = error?.message || 'Failed to retry resume generation';
+      console.error('Error retrying resume generation:', message);
+      void this.markResumeFailed(resumeId, userId);
+    });
   }
 
   async create(
@@ -3122,6 +3168,9 @@ CANDIDATE_BACKGROUND:
       return template.generate();
     } else if (templateName === 'template5') {
       const template = new ResumePDFTemplate5(data, pdfSettings);
+      return template.generate();
+    } else if (templateName === 'template6') {
+      const template = new ResumePDFTemplate6(data, pdfSettings);
       return template.generate();
     }
 

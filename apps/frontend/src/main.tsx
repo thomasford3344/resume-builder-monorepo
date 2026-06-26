@@ -9,6 +9,9 @@ import "react-toastify/dist/ReactToastify.css";
 import Layout from "./components/common/Layout";
 import AuthProvider from "./components/common/AuthContext";
 import ThemeModeProvider, { useThemeMode } from "./components/common/ThemeContext";
+import ToastPositionProvider, {
+  useToastPosition,
+} from "./components/common/ToastPositionContext";
 import AdminLayout from "./components/common/AdminLayout";
 import NonPrivateLayout from "./components/common/NonPrivateLayout";
 import Login from "./pages/login";
@@ -80,12 +83,14 @@ const router = createBrowserRouter([
 
 const AppContent: React.FC = () => {
   const { mode } = useThemeMode();
+  const { position } = useToastPosition();
 
   return (
     <>
       <RouterProvider router={router} />
       <ToastContainer
-        position="top-right"
+        key={position}
+        position={position}
         autoClose={3000}
         hideProgressBar={false}
         newestOnTop={false}
@@ -105,7 +110,9 @@ createRoot(document.getElementById("root")!).render(
     <AuthProvider>
       <RaceProvider>
         <ThemeModeProvider>
-          <AppContent />
+          <ToastPositionProvider>
+            <AppContent />
+          </ToastPositionProvider>
         </ThemeModeProvider>
       </RaceProvider>
     </AuthProvider>
