@@ -723,7 +723,7 @@ export class ResumePDFTemplate6 {
 
       // Render company text on the left
       const expTitle = (exp.title || '').trim();
-      const headerPart = `${companyText}  — ${expTitle}`;
+      const headerPart = `${companyText} — ${expTitle}`;
       const fullLine = dateRange ? `${headerPart} | ${dateRange}` : headerPart;
 
       doc

@@ -486,7 +486,7 @@ export class ResumePDFTemplate5 {
     }
 
     const contentFontSize = 11;
-    const bulletX = options.bulletX ?? this.marginX + 18;
+    const bulletX = options.bulletX ?? this.marginX;
     const textWidth = options.textWidth ?? this.contentWidth;
     const contentColor = options.contentColor ?? '#333333';
 
@@ -602,13 +602,14 @@ export class ResumePDFTemplate5 {
       }
 
       doc
-        .font(this.fontName)
+        .font(this.fontBold)
         .fontSize(companyFontSize)
         // .fillColor('#2C3E50')
         .fillColor(defaultColor)
-        .text(` | ${company}`);
+        .text(` — ${companyText}`);
     
       doc
+        .font(this.fontName)
         .fontSize(companyFontSize)
         .text(dateLocation, this.marginX, doc.y, {
           align: 'left',
@@ -697,8 +698,7 @@ export class ResumePDFTemplate5 {
         .fillColor(defaultColor)
         .text(edu.degree || '', this.marginX, doc.y, {
           width: this.contentWidth,
-          align: 'left',
-          continued: true
+          align: 'left'
         });
 
       const institution = edu.institution || '';
@@ -709,61 +709,25 @@ export class ResumePDFTemplate5 {
         ? `${dateRange} | ${location}`.trim()
         : dateRange.trim();
 
-      let graduated = "";
-      if (dateRange.includes(" - ")) {
-        graduated = dateRange.split(" - ")[1];
-      } else if (dateRange.includes(" – ")) {
-        graduated = dateRange.split(" – ")[1];
-      }
-      let graduatedYear = "";
-      if (graduated.includes("/")) {
-        graduatedYear = graduated.split("/")[1];
-      } else if (graduated.includes(" ")) {
-        graduatedYear = graduated.split(" ")[1];
-      }
-      let months = {
-        "01": "Jan",
-        "02": "Feb",
-        "03": "Mar",
-        "04": "Apr",
-        "05": "May",
-        "06": "Jun",
-        "07": "Jul",
-        "08": "Aug",
-        "09": "Sep",
-        "10": "Oct",
-        "11": "Nov",
-        "12": "Dec",
-      };
-      let graduatedMonth = ""
-      if (graduated.split("/")[0].length < 3) {
-        graduatedMonth = months[graduated.split("/")[0]];
-      } else {
-        graduatedMonth = graduated.split("/")[0].substring(0, 3);
-      }
+      doc
+          .font(this.fontName)
+          .fontSize(11.5)
+          // .fillColor('#2C3E50')
+          .fillColor(defaultColor)
+          .text(`${institution} — ${location}`, this.marginX, doc.y, {
+            width: this.contentWidth,
+            align: 'left',
+          });
 
-      // Render degree title
-      if (graduatedMonth !== undefined && graduatedYear !== undefined) {
-        doc
+      doc
           .font(this.fontName)
           .fontSize(11.5)
           // .fillColor('#2C3E50')
           .fillColor(defaultColor)
-          .text(` | ${institution} | Graduated ${graduatedMonth} ${graduatedYear}`, this.marginX, doc.y, {
+          .text(`${dateRange}`, this.marginX, doc.y, {
             width: this.contentWidth,
             align: 'left',
           });
-      } else {
-        doc
-          .font(this.fontName)
-          .fontSize(11.5)
-          // .fillColor('#2C3E50')
-          .fillColor(defaultColor)
-          .text(` | ${institution} | ${dateRange}`, this.marginX, doc.y, {
-            width: this.contentWidth,
-            align: 'left',
-          });
-      }
       doc.moveDown(1);
     }
   }
