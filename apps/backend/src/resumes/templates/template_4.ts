@@ -775,8 +775,8 @@ export class ResumePDFTemplate4 {
     this._addSectionHeader(doc, 'CERTIFICATIONS');
 
     const contentFontSize = 11;
-    const bulletX = this.marginX + 18;
-    const textWidth = this.contentWidth - 18;
+    const bulletX = this.marginX;
+    const textWidth = this.contentWidth;
 
     doc.font(this.fontName).fontSize(contentFontSize).fillColor('#333333');
 
