@@ -3,8 +3,6 @@ import { existsSync } from 'fs';
 import { join } from 'path';
 import { ResumeData, DEFAULT_RESUME_PDF_SETTINGS, filterSkillsForPdf, getCertificationText, type ResumePdfSettings } from '.';
 
-const titleColor = "#4A4A4A"
-const contentColor = "#2C3E50"
 const defaultColor = "#000000"
 
 export class ResumePDFTemplate5 {
@@ -49,7 +47,6 @@ export class ResumePDFTemplate5 {
   }
 
   private _findFonts() {
-    // const fontsDir = join(process.cwd(), 'assets', 'fonts', 'cambria');
     const fontsDir = join(process.cwd(), 'assets', 'fonts', 'calibri');
 
     const regularVariants = [
@@ -145,7 +142,6 @@ export class ResumePDFTemplate5 {
     doc
       .font(this.fontBold)
       .fontSize(22)
-      // .fillColor('#2C3E50')
       .fillColor(defaultColor)
       .text(name, this.marginX, this.marginT, {
         width: this.contentWidth,
@@ -159,7 +155,6 @@ export class ResumePDFTemplate5 {
     const title = this.data.title || '';
 
     if (title) {
-      // doc.font(this.fontName).fontSize(16).fillColor('#4A4A4A').text(title, {
       doc.font(this.fontName).fontSize(16).fillColor(defaultColor).text(title, {
         width: this.contentWidth,
         align: 'left',
@@ -174,13 +169,10 @@ export class ResumePDFTemplate5 {
     const address = contact.address || '';
     const email = contact.email || '';
     const phone = contact.phone || '';
-    const linkedin = contact.linkedin || '';
 
-    // doc.fontSize(12).fillColor('#4A4A4A');
     doc.fontSize(12).fillColor(defaultColor);
 
     const startY = doc.y;
-    // doc.font(this.fontName).fillColor('#4A4A4A');
     doc.font(this.fontName).fillColor(defaultColor);
     const addressAndPhone = `${address} | ${phone} | ${email}`;
     doc.text(addressAndPhone, this.marginX, startY, {
@@ -231,11 +223,9 @@ export class ResumePDFTemplate5 {
     doc
       .font(this.fontBold)
       .fontSize(fontSize)
-      // .fillColor('#2C3E50')
       .fillColor(defaultColor)
       .text(
         titleText,
-        // this.marginX + paddingVertical,
         this.marginX,
         startY + paddingVertical,
         {
@@ -342,7 +332,6 @@ export class ResumePDFTemplate5 {
     this._addSectionHeader(doc, 'PROFESSIONAL SUMMARY');
     const summary = (this.data.summary || '').replace(/\n/g, ' ');
 
-    // doc.font(this.fontName).fontSize(11).fillColor('#333333').text(summary, {
     doc.font(this.fontName).fontSize(11).fillColor(defaultColor).text(summary, {
       width: this.contentWidth,
       align: 'left',
@@ -486,7 +475,7 @@ export class ResumePDFTemplate5 {
     }
 
     const contentFontSize = 11;
-    const bulletX = options.bulletX ?? this.marginX + 18;
+    const bulletX = options.bulletX ?? this.marginX;
     const textWidth = options.textWidth ?? this.contentWidth;
     const contentColor = options.contentColor ?? '#333333';
 
@@ -540,9 +529,9 @@ export class ResumePDFTemplate5 {
 
     for (const exp of experiences) {
       // Calculate space needed for this experience entry
-      // const titleFontSize = 12;
       const titleFontSize = 12.5;
-      const companyFontSize = 11.5;
+      const companyFontSize = 12.5;
+      const dateFontSize = 11.5;
       const titleHeight = titleFontSize * 1.2;
       const companyHeight = companyFontSize * 1.2;
       const companyLineHeight = companyFontSize * 1.2; // Line height for company font
@@ -565,7 +554,6 @@ export class ResumePDFTemplate5 {
       doc
         .font(this.fontBold)
         .fontSize(titleFontSize)
-        // .fillColor('#2C3E50')
         .fillColor(defaultColor)
         .text(exp.title || '', this.marginX, doc.y, {
           width: this.contentWidth,
@@ -576,15 +564,12 @@ export class ResumePDFTemplate5 {
 
       const company = exp.company || '';
       const dateRange = exp.date_range || '';
-      // const location = exp.location || '';
-      const location = exp.job_type || '';
+      const jobType = exp.job_type || '';
       const companyText = company.trim();
-      const dateLocation = location
-        ? `${location} | ${dateRange}`.trim()
+      const dateLocation = jobType
+        ? `${jobType} | ${dateRange}`.trim()
         : dateRange.trim();
 
-      const col1Width = this.contentWidth * 0.5;
-      const col2Width = this.contentWidth * 0.5;
       // Get current Y position
       let lineY = doc.y;
       const lineHeight = doc.currentLineHeight(true) || 13;
@@ -602,14 +587,14 @@ export class ResumePDFTemplate5 {
       }
 
       doc
-        .font(this.fontName)
+        .font(this.fontBold)
         .fontSize(companyFontSize)
-        // .fillColor('#2C3E50')
         .fillColor(defaultColor)
-        .text(` | ${company}`);
-    
+        .text(` — ${companyText}`);
+
       doc
-        .fontSize(companyFontSize)
+        .font(this.fontName)
+        .fontSize(dateFontSize)
         .text(dateLocation, this.marginX, doc.y, {
           align: 'left',
           paragraphGap: 3,
@@ -668,16 +653,15 @@ export class ResumePDFTemplate5 {
     for (const edu of educationList) {
       // Calculate space needed for this education entry
       const degreeFontSize = 12.5;
-      const institutionFontSize = 11.5;
+      const institutionFontSize = 12.5;
+      const dateFontSize = 11.5;
       const degreeHeight = degreeFontSize * 1.2;
-      const institutionHeight = institutionFontSize * 1.2;
-      const spacingAfterInstitution = institutionFontSize * 1; // moveDown(1)
+      const spacingAfterInstitution = degreeFontSize * 1.2; // moveDown(1)
       const minContentSpace = institutionFontSize * 1; // At least 1 line of spacing
 
       // Minimum space needed: degree + institution + spacing
       const minSpaceNeeded =
-        degreeHeight +
-        institutionHeight +
+        degreeHeight * 2 +
         spacingAfterInstitution +
         minContentSpace;
 
@@ -693,77 +677,35 @@ export class ResumePDFTemplate5 {
       doc
         .font(this.fontBold)
         .fontSize(degreeFontSize)
-        // .fillColor('#2C3E50')
         .fillColor(defaultColor)
         .text(edu.degree || '', this.marginX, doc.y, {
           width: this.contentWidth,
-          align: 'left',
-          continued: true
+          align: 'left'
         });
 
       const institution = edu.institution || '';
       const dateRange = edu.date_range || '';
       const location = edu.location || '';
       const institutionText = institution.trim();
-      const dateLocation = location
-        ? `${dateRange} | ${location}`.trim()
-        : dateRange.trim();
 
-      let graduated = "";
-      if (dateRange.includes(" - ")) {
-        graduated = dateRange.split(" - ")[1];
-      } else if (dateRange.includes(" – ")) {
-        graduated = dateRange.split(" – ")[1];
-      }
-      let graduatedYear = "";
-      if (graduated.includes("/")) {
-        graduatedYear = graduated.split("/")[1];
-      } else if (graduated.includes(" ")) {
-        graduatedYear = graduated.split(" ")[1];
-      }
-      let months = {
-        "01": "Jan",
-        "02": "Feb",
-        "03": "Mar",
-        "04": "Apr",
-        "05": "May",
-        "06": "Jun",
-        "07": "Jul",
-        "08": "Aug",
-        "09": "Sep",
-        "10": "Oct",
-        "11": "Nov",
-        "12": "Dec",
-      };
-      let graduatedMonth = ""
-      if (graduated.split("/")[0].length < 3) {
-        graduatedMonth = months[graduated.split("/")[0]];
-      } else {
-        graduatedMonth = graduated.split("/")[0].substring(0, 3);
-      }
+      doc
+        .font(this.fontName)
+        .fontSize(institutionFontSize)
+        .fillColor(defaultColor)
+        .text(`${institutionText} — ${location}`, this.marginX, doc.y, {
+          width: this.contentWidth,
+          align: 'left',
+          lineGap: 2
+        });
 
-      // Render degree title
-      if (graduatedMonth !== undefined && graduatedYear !== undefined) {
-        doc
-          .font(this.fontName)
-          .fontSize(11.5)
-          // .fillColor('#2C3E50')
-          .fillColor(defaultColor)
-          .text(` | ${institution} | Graduated ${graduatedMonth} ${graduatedYear}`, this.marginX, doc.y, {
-            width: this.contentWidth,
-            align: 'left',
-          });
-      } else {
-        doc
-          .font(this.fontName)
-          .fontSize(11.5)
-          // .fillColor('#2C3E50')
-          .fillColor(defaultColor)
-          .text(` | ${institution} | ${dateRange}`, this.marginX, doc.y, {
-            width: this.contentWidth,
-            align: 'left',
-          });
-      }
+      doc
+        .font(this.fontName)
+        .fontSize(dateFontSize)
+        .fillColor(defaultColor)
+        .text(`${dateRange}`, this.marginX, doc.y, {
+          width: this.contentWidth,
+          align: 'left',
+        });
       doc.moveDown(1);
     }
   }
