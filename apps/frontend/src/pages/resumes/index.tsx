@@ -248,8 +248,13 @@ const Resumes: React.FC = () => {
   }, []);
 
   const loadResumes = React.useCallback(
-    async (filterParams?: FilterResumeParams) => {
-      setLoading(true);
+    async (
+      filterParams?: FilterResumeParams,
+      options?: { silent?: boolean },
+    ) => {
+      if (!options?.silent) {
+        setLoading(true);
+      }
       try {
         // Build filter object, only including non-empty values
         const activeFilters: FilterResumeParams = {};
@@ -271,13 +276,41 @@ const Resumes: React.FC = () => {
         );
         setResumes(data);
       } catch {
-        toast.error("Failed to load resumes");
+        if (!options?.silent) {
+          toast.error("Failed to load resumes");
+        }
       } finally {
-        setLoading(false);
+        if (!options?.silent) {
+          setLoading(false);
+        }
       }
     },
     [],
   );
+
+  const filtersRef = React.useRef(filters);
+  const loadResumesRef = React.useRef(loadResumes);
+
+  React.useEffect(() => {
+    filtersRef.current = filters;
+  }, [filters]);
+
+  React.useEffect(() => {
+    loadResumesRef.current = loadResumes;
+  }, [loadResumes]);
+
+  React.useEffect(() => {
+    const hasInProgress = resumes.some((resume) => resume.status === "in_progress");
+    if (!hasInProgress) {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      void loadResumesRef.current(filtersRef.current, { silent: true });
+    }, 5000);
+
+    return () => window.clearInterval(intervalId);
+  }, [resumes]);
 
   React.useEffect(() => {
     function onConnect() {
@@ -296,23 +329,44 @@ const Resumes: React.FC = () => {
     };
 
     function onGenerateDone({ id }: GenerateDonePayload) {
-      setResumes((prev) =>
-        prev.map((r) =>
-          r._id === id
-            ? { ...r, status: "completed", failureMessage: undefined }
-            : r,
-        ),
-      );
+      let matched = false;
+      setResumes((prev) => {
+        matched = prev.some((resume) => String(resume._id) === String(id));
+        if (!matched) {
+          return prev;
+        }
+
+        return prev.map((resume) =>
+          String(resume._id) === String(id)
+            ? { ...resume, status: "completed", failureMessage: undefined }
+            : resume,
+        );
+      });
+
+      if (!matched) {
+        void loadResumesRef.current(filtersRef.current, { silent: true });
+      }
     }
 
     function onGenerateFailed({ id, message }: GenerateDonePayload) {
-      setResumes((prev) =>
-        prev.map((r) =>
-          r._id === id
-            ? { ...r, status: "failed", failureMessage: message }
-            : r,
-        ),
-      );
+      let matched = false;
+      setResumes((prev) => {
+        matched = prev.some((resume) => String(resume._id) === String(id));
+        if (!matched) {
+          return prev;
+        }
+
+        return prev.map((resume) =>
+          String(resume._id) === String(id)
+            ? { ...resume, status: "failed", failureMessage: message }
+            : resume,
+        );
+      });
+
+      if (!matched) {
+        void loadResumesRef.current(filtersRef.current, { silent: true });
+      }
+
       if (message) {
         toast.error(message);
       }
@@ -544,6 +598,11 @@ const Resumes: React.FC = () => {
       window.URL.revokeObjectURL(url);
 
       toast.success("Cover letter generated and downloaded successfully!");
+      setResumes((prev) =>
+        prev.map((r) =>
+          r._id === id ? { ...r, coverLetter: r.coverLetter || "generated" } : r,
+        ),
+      );
     } catch (error: unknown) {
       const err = error as {
         response?: { data?: Blob };
@@ -1075,12 +1134,18 @@ const Resumes: React.FC = () => {
                   <TableCell align="center">
                     <IconButton
                       size="small"
-                      color="info"
+                      color={
+                        resume.coverLetter?.trim()
+                          ? "success"
+                          : "info"
+                      }
                       onClick={() => handleGenerateCoverLetter(resume._id)}
                       title={
                         resume.generationSource === "manual"
                           ? "Cover letter not available for manual resumes"
-                          : "Generate Cover Letter"
+                          : resume.coverLetter?.trim()
+                            ? "Download cover letter (already generated)"
+                            : "Generate cover letter"
                       }
                       disabled={
                         resume.status !== "completed" ||
