@@ -784,6 +784,7 @@ export class ResumePDFTemplate1 {
     this._ensureSpaceForSubtitleSection(doc, items);
     this._addSectionHeader(doc, 'CERTIFICATIONS');
     this._addBulletItems(doc, items, {
+      bulletX: this.marginX,
       contentColor: defaultColor,
       lineGap: 3,
     });

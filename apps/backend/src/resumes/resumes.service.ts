@@ -3116,12 +3116,8 @@ CANDIDATE_BACKGROUND:
       template,
       userId,
     );
-
-    const sanitizedName = (sampleJson.name || 'resume')
-      .replace(/[^a-zA-Z0-9\s-]/g, '')
-      .trim()
-      .replace(/\s+/g, '_');
-    const filename = `${sanitizedName}_${template}_preview.pdf`;
+    
+    const filename = `${template}_preview.pdf`;
 
     return { pdfBuffer, filename };
   }

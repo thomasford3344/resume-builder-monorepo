@@ -8,14 +8,14 @@ export class ResumePDFTemplate4 {
   private data: ResumeData;
   private pageWidth = 612; // Letter width in points (8.5 * 72)
   private pageHeight = 792; // Letter height in points (11 * 72)
-  private marginX = 0.4 * 72; // 0.4 inch in points (horizontal)
-  private marginT = 0.8 * 72; // 0.8 inch in points (vertical top)
-  private marginB = 0.4 * 72; // 0.4 inch in points (vertical bottom)
+  private marginX = 0.75 * 72; // 0.4 inch in points (horizontal)
+  private marginT = 0.75 * 72; // 0.8 inch in points (vertical top)
+  private marginB = 0.75 * 72; // 0.4 inch in points (vertical bottom)
   private contentWidth: number;
-  private fontName = 'Times-Roman';
-  private fontBold = 'Times-Bold';
-  private fontItalic = 'Times-Italic';
-  private fontBoldItalic = 'Times-BoldItalic';
+  private fontName = 'Calibri';
+  private fontBold = 'Calibri-Bold';
+  private fontItalic = 'Calibri-Italic';
+  private fontBoldItalic = 'Calibri-BoldItalic';
   private fontPath: string | null = null;
   private fontBoldPath: string | null = null;
   private fontItalicPath: string | null = null;
@@ -60,30 +60,20 @@ export class ResumePDFTemplate4 {
   }
 
   private _findFonts() {
-    const fontsDir = join(process.cwd(), 'assets', 'fonts', 'cambria');
+    // const fontsDir = join(process.cwd(), 'assets', 'fonts', 'cambria');
+    const fontsDir = join(process.cwd(), 'assets', 'fonts', 'calibri');
+
     const regularVariants = [
-      // 'Cambria.eot',
-      'Cambria.ttf',
-      // 'Cambria.woff',
-      // 'Cambria.woff2',
+      'calibri-regular.ttf',
     ];
     const boldVariants = [
-      // 'Cambria-Bold.eot',
-      'Cambria-Bold.ttf',
-      // 'Cambria-Bold.woff',
-      // 'Cambria-Bold.woff2',
+      'calibri-bold.ttf',
     ];
     const italicVariants = [
-      // 'Cambria-Italic.eot',
-      'Cambria-Italic.ttf',
-      // 'Cambria-Italic.woff',
-      // 'Cambria-Italic.woff2',
+      'calibri-italic.ttf',
     ];
     const boldItalicVariants = [
-      // 'Cambria-BoldItalic.eot',
-      'Cambria-BoldItalic.ttf',
-      // 'Cambria-BoldItalic.woff',
-      // 'Cambria-BoldItalic.woff2',
+      'calibri-bold-italic.ttf',
     ];
 
     if (existsSync(fontsDir)) {
@@ -91,7 +81,7 @@ export class ResumePDFTemplate4 {
         const fontPath = join(fontsDir, variant);
         if (existsSync(fontPath) && !fontPath.toLowerCase().endsWith('.ttc')) {
           this.fontPath = fontPath;
-          this.fontName = 'Cambria';
+          this.fontName = 'Calibri';
           break;
         }
       }
@@ -100,7 +90,7 @@ export class ResumePDFTemplate4 {
         const fontPath = join(fontsDir, variant);
         if (existsSync(fontPath) && !fontPath.toLowerCase().endsWith('.ttc')) {
           this.fontBoldPath = fontPath;
-          this.fontBold = 'Cambria-Bold';
+          this.fontBold = 'Calibri-Bold';
           break;
         }
       }
@@ -109,7 +99,7 @@ export class ResumePDFTemplate4 {
         const fontPath = join(fontsDir, variant);
         if (existsSync(fontPath) && !fontPath.toLowerCase().endsWith('.ttc')) {
           this.fontItalicPath = fontPath;
-          this.fontItalic = 'Cambria-Italic';
+          this.fontItalic = 'Calibri-Italic';
           break;
         }
       }
@@ -118,7 +108,7 @@ export class ResumePDFTemplate4 {
         const fontPath = join(fontsDir, variant);
         if (existsSync(fontPath) && !fontPath.toLowerCase().endsWith('.ttc')) {
           this.fontBoldItalicPath = fontPath;
-          this.fontBoldItalic = 'Cambria-BoldItalic';
+          this.fontBoldItalic = 'Calibri-BoldItalic';
           break;
         }
       }
@@ -138,6 +128,7 @@ export class ResumePDFTemplate4 {
   private _registerFonts(doc: any) {
     if (this.fontPath && existsSync(this.fontPath)) {
       try {
+
         doc.registerFont(this.fontName, this.fontPath);
         if (this.fontBoldPath) {
           doc.registerFont(this.fontBold, this.fontBoldPath);
@@ -151,10 +142,10 @@ export class ResumePDFTemplate4 {
       } catch (e) {
         const errorMessage = e instanceof Error ? e.message : String(e);
         console.log(`Warning: Could not register fonts: ${errorMessage}`);
-        this.fontName = 'Times-Roman';
-        this.fontBold = 'Times-Bold';
-        this.fontItalic = 'Times-Italic';
-        this.fontBoldItalic = 'Times-BoldItalic';
+        this.fontName = 'Calibri';
+        this.fontBold = 'Calibri-Bold';
+        this.fontItalic = 'Calibri-Italic';
+        this.fontBoldItalic = 'Calibri-BoldItalic';
       }
     }
   }
@@ -225,7 +216,7 @@ export class ResumePDFTemplate4 {
     // Check if there's enough space for the section header
     // Section header needs: title line with background + spacing
     const headerFontSize = 12;
-    const headerHeight = headerFontSize * 1.5; // Title line with padding
+    const headerHeight = headerFontSize * 1.2; // Title line with padding
     const paddingVertical = headerFontSize * 0.15; // Vertical padding for background
     const spacingAfter = headerFontSize * 0.5; // moveDown(0.5)
 
@@ -373,7 +364,7 @@ export class ResumePDFTemplate4 {
   }
 
   private _addSummary(doc: any) {
-    this._addSectionHeader(doc, 'SUMMARY');
+    this._addSectionHeader(doc, 'PROFESSIONAL SUMMARY');
     const summary = (this.data.summary || '').replace(/\n/g, ' ');
 
     doc.font(this.fontName).fontSize(11).fillColor('#333333').text(summary, {
@@ -394,7 +385,7 @@ export class ResumePDFTemplate4 {
       return;
     }
 
-    this._addSectionHeader(doc, 'SKILLS');
+    this._addSectionHeader(doc, 'TECHNICAL SKILLS');
 
     doc.font(this.fontName).fontSize(11).fillColor('#333333');
 
@@ -580,7 +571,7 @@ export class ResumePDFTemplate4 {
   }
 
   private _addExperience(doc: any) {
-    this._addSectionHeader(doc, 'WORK HISTORY');
+    this._addSectionHeader(doc, 'PROFESSIONAL EXPERIENCE');
     const experiences = this.data.experience || [];
 
     for (const exp of experiences) {
@@ -784,8 +775,8 @@ export class ResumePDFTemplate4 {
     this._addSectionHeader(doc, 'CERTIFICATIONS');
 
     const contentFontSize = 11;
-    const bulletX = this.marginX + 18;
-    const textWidth = this.contentWidth - 18;
+    const bulletX = this.marginX;
+    const textWidth = this.contentWidth;
 
     doc.font(this.fontName).fontSize(contentFontSize).fillColor('#333333');
 
@@ -893,12 +884,12 @@ export class ResumePDFTemplate4 {
         });
         doc.on('error', reject);
 
-        const self = this;
-        doc.on('pageAdded', async () => {
-          await self._drawHeaderImage(doc);
-        });
+        // const self = this;
+        // doc.on('pageAdded', async () => {
+        //   await self._drawHeaderImage(doc);
+        // });
 
-        await this._drawHeaderImage(doc);
+        // await this._drawHeaderImage(doc);
         this._addName(doc);
         if (this.pdfSettings.showTitle) {
           this._addTitle(doc);

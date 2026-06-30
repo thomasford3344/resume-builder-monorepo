@@ -9,8 +9,8 @@ Your task is to GENERATE AN UPDATED RESUME, not to restyle the existing resume.
 INPUTS
 ========================================
 
-Job Description:
-${jd}
+The input contains 
+- job_description: the target job description
 
 Existing Resume Content:
 {
@@ -459,12 +459,12 @@ EXPERIENCE COUNT RULES — STRICT
 
 For EACH experience entry, generate EXACTLY:
 
-- responsibilities: 3 items
+- responsibilities: 2 items
 - achievements: 5 items
 - skills: 8 items
 
 This means every job must contain:
-- EXACTLY 3 responsibility bullets
+- EXACTLY 2 responsibility bullets
 - EXACTLY 5 achievement bullets
 - EXACTLY 8 role-specific skills
 
@@ -703,8 +703,7 @@ Field ordering must match this structure exactly.
       "job_type": "On-site",
       "responsibilities": [
         "Responsibility 1 with metric",
-        "Responsibility 2 with metric",
-        "Responsibility 3 with metric"
+        "Responsibility 2 with metric"
       ],
       "achievements": [
         "Achievement 1 with metric",
