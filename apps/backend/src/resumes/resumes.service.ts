@@ -2913,7 +2913,11 @@ CANDIDATE_BACKGROUND:
   /**
    * Generate a cover letter PDF from text
    */
-  private async generateCoverLetterPDF(username: string, coverLetterText: string): Promise<Buffer> {
+  private async generateCoverLetterPDF(
+    username: string,
+    coverLetterText: string,
+    resumeCreatedAt: Date,
+  ): Promise<Buffer> {
     return new Promise((resolve, reject) => {
       try {
         const PDFDoc = (PDFKit as any).default || PDFKit;
@@ -2963,7 +2967,7 @@ CANDIDATE_BACKGROUND:
           month: 'short',
           day: 'numeric',
           year: 'numeric',
-        }).format(new Date());
+        }).format(resumeCreatedAt);
 
         doc.fontSize(15).text(normalizedUsername, { align: 'left' });
         doc.moveDown(0.35);
@@ -3314,6 +3318,7 @@ CANDIDATE_BACKGROUND:
     const pdfBuffer = await this.generateCoverLetterPDF(
       user.name,
       formattedCoverLetter,
+      resume.createdAt,
     );
 
     return {
@@ -3354,7 +3359,11 @@ CANDIDATE_BACKGROUND:
     let coverLetterText = this.normalizeCoverLetterText(resume.coverLetter);
 
     // Generate PDF from the stored cover letter text
-    const pdfBuffer = await this.generateCoverLetterPDF(user.name, coverLetterText);
+    const pdfBuffer = await this.generateCoverLetterPDF(
+      user.name,
+      coverLetterText,
+      resume.createdAt,
+    );
 
     return pdfBuffer;
   }

@@ -68,6 +68,9 @@ export class Resume {
     required: false,
   })
   answers?: Array<{ question: string; answer: string }>;
+
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export const ResumeSchema = SchemaFactory.createForClass(Resume);
