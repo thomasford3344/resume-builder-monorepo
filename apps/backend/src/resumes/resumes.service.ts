@@ -16,6 +16,7 @@ import {
   ResumePDFTemplate4,
   ResumePDFTemplate5,
   ResumePDFTemplate6,
+  ResumePDFTemplate7,
   DEFAULT_RESUME_PDF_SETTINGS,
   type ResumePdfSettings,
 } from './templates';
@@ -31,6 +32,7 @@ const VALID_TEMPLATES = [
   'template4',
   'template5',
   'template6',
+  'template7',
 ] as const;
 
 const SAMPLE_RESUME_JSON_PATH = join(
@@ -3182,6 +3184,9 @@ CANDIDATE_BACKGROUND:
       return template.generate();
     } else if (templateName === 'template6') {
       const template = new ResumePDFTemplate6(data, pdfSettings);
+      return template.generate();
+    } else if (templateName === 'template7') {
+      const template = new ResumePDFTemplate7(data, pdfSettings);
       return template.generate();
     }
 
