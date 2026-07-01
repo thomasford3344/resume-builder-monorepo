@@ -48,7 +48,7 @@ const schema = yup
     role: yup.string().oneOf(["user", "admin"]).required(),
     template: yup
       .string()
-      .oneOf(["template1", "template2", "template3", "template4", "template5", "template6"])
+      .oneOf(["template1", "template2", "template3", "template4", "template5", "template6", "template7"])
       .required(),
     instructions: yup.string().notRequired(),
     questionsPrompt: yup.string().notRequired(),
@@ -234,6 +234,7 @@ const UpsertUserDialog = React.forwardRef<
                       <MenuItem value="template4">Template 4</MenuItem>
                       <MenuItem value="template5">Template 5</MenuItem>
                       <MenuItem value="template6">Template 6</MenuItem>
+                      <MenuItem value="template7">Template 7</MenuItem>
                     </Select>
                   )}
                 />
