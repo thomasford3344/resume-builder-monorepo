@@ -2979,7 +2979,7 @@ CANDIDATE_BACKGROUND:
             align: 'left',
             lineGap: 1.5,
           });
-          doc.moveDown(0.35);
+          doc.moveDown(0.75);
         }
 
         doc.text(dateText, {

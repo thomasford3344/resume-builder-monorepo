@@ -18,7 +18,7 @@ Existing Resume:
   "title": "Senior Full Stack Engineer",
   "contact": {
     "address": "Lubbock, TX 79403",
-    "email": "thomasfordwe@gmail.com",
+    "email": "thomasford3344@gmail.com",
     "phone": "(940) 331 7571",
     "linkedin": ""
   },
