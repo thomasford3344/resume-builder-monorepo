@@ -7,9 +7,9 @@ export const SKILL_CATEGORIES = [
   "Database",
   "Tools",
   "Testing",
-  "Industry",
   "Methodology",
   "Mobile",
+  "Industry",
 ] as const;
 
 export type SkillCategory = (typeof SKILL_CATEGORIES)[number];
