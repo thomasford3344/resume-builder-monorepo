@@ -18,8 +18,8 @@ Existing Resume:
     "title": "Senior Software Engineer",
     "contact": {
         "address": "Lubbock, TX 79403",
-        "email": "thomasford3344@gmail.com",
-        "phone": "(940) 331 7571",
+        "email": "thomaswesford@gmail.com",
+        "phone": "(806) 331 7571",
         "linkedin": ""
     },
     "summary": "Senior Software Engineer with 7+ years delivering full-stack healthcare platforms across React, Python, Node.js, PostgreSQL, REST APIs, and AWS. Built broker-facing and patient-facing web applications in regulated environments, accelerating appointment-flow completion by 31% and reducing patient-service processing time by 24%. Fluent with AI-powered developer tools, experienced navigating ambiguity in fast-paced product teams, and focused on scalable architectures that drive measurable outcomes for end users.",
