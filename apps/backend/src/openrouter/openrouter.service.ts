@@ -290,7 +290,10 @@ export class OpenRouterService {
     try {
       const response = await this.createChatCompletion(keys, structuredRequest);
       const outputText = this.getMessageContent(response);
-      return parseQuestionsResponse(this.extractJsonText(outputText));
+      return parseQuestionsResponse(
+        this.extractJsonText(outputText),
+        questionsText,
+      );
     } catch (error) {
       if (!this.isRetryableStructuredOutputError(error)) {
         throw error;
@@ -313,6 +316,9 @@ export class OpenRouterService {
     });
 
     const outputText = this.getMessageContent(fallbackResponse);
-    return parseQuestionsResponse(this.extractJsonText(outputText));
+    return parseQuestionsResponse(
+      this.extractJsonText(outputText),
+      questionsText,
+    );
   }
 }
