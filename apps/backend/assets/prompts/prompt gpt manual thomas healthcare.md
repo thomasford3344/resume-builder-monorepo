@@ -14,217 +14,226 @@ The input contains
 
 Existing Resume:
 {
-  "name": "Thomas Ford",
-  "title": "Senior Full Stack Engineer",
-  "contact": {
-    "address": "Lubbock, TX 79403",
-    "email": "thomasford3344@gmail.com",
-    "phone": "(940) 331 7571",
-    "linkedin": ""
-  },
-  "summary": "Senior Full Stack Engineer with deep experience modernizing patient-facing healthcare software across scheduling, registration, virtual care, reminders, payments, and clinical operations. Brings strong Python, JavaScript, React, Node.js, PostgreSQL, Linux, AWS, and API integration skills, plus a product-minded approach suited to small, self-funded teams. Recent work improved appointment-flow completion by 31% and reduced patient-service processing time by 24% through simpler interfaces, resilient integrations, and close feedback loops with clinicians, practice staff, product managers, and designers.",
-  "skills": [
-    {
-      "category": "Backend",
-      "items": [
-        "Python",
-        "JavaScript",
-        "Node.js",
-        "Express.js",
-        "C#/.NET",
-        "REST APIs",
-        "Event-Driven Architecture",
-        "Linux"
-      ]
+    "name": "Thomas Ford",
+    "title": "Senior Software Engineer",
+    "contact": {
+        "address": "Lubbock, TX 79403",
+        "email": "thomasford3344@gmail.com",
+        "phone": "(940) 331 7571",
+        "linkedin": ""
     },
-    {
-      "category": "Frontend",
-      "items": [
-        "React",
-        "TypeScript",
-        "Redux",
-        "Material UI",
-        "HTML5",
-        "CSS3",
-        "Accessible Forms",
-        "Responsive Web Applications"
-      ]
-    },
-    {
-      "category": "Cloud",
-      "items": [
-        "AWS",
-        "Docker",
-        "Kubernetes",
-        "GitHub Actions",
-        "Jenkins",
-        "CI/CD",
-        "CloudWatch",
-        "Datadog"
-      ]
-    },
-    {
-      "category": "Data",
-      "items": [
-        "PostgreSQL",
-        "SQL Server",
-        "MySQL",
-        "Redis",
-        "SQL Query Optimization",
-        "Database Indexing",
-        "Data Modeling",
-        "Audit Logging"
-      ]
-    },
-    {
-      "category": "Tools",
-      "items": [
-        "Git",
-        "Jira",
-        "Swagger/OpenAPI",
-        "Postman",
-        "Jest",
-        "Cypress",
-        "AI-Augmented Development",
-        "LLM Prototyping"
-      ]
-    },
-    {
-      "category": "Industry",
-      "items": [
-        "Patient Engagement",
-        "Online Scheduling",
-        "Paperless Check-In",
-        "Automated Reminders",
-        "Waitlist Automation",
-        "Virtual Care",
-        "EHR Integration",
-        "HIPAA Compliance"
-      ]
-    }
-  ],
-  "experience": [
-    {
-      "title": "Senior Full Stack Engineer",
-      "company": "CVS Health",
-      "date_range": "05/2023 - Present",
-      "job_type": "Remote",
-      "responsibilities": [
-        "Architected Python, Node.js/Express.js, React, Redux, Material UI, and PostgreSQL services spanning 12 patient workflows for scheduling, paperless check-in, automated waitlists, reminders, payments, and virtual care with product, design, clinical, and compliance stakeholders.",
-        "Directed end-to-end ownership of 7 CVS Virtual Care and MinuteClinic® feature areas, translating patient and clinician feedback into Linux-hosted APIs, accessible interfaces, and measurable release goals.",
-        "Orchestrated delivery across 4 engineering workstreams using AWS, Docker, Kubernetes, GitHub Actions, and automated testing while coordinating architecture decisions with senior engineers and product leadership."
-      ],
-      "achievements": [
-        "Increased appointment-flow completion by 31% by simplifying React registration steps, clarifying eligibility states, and instrumenting abandonment points across CVS Virtual Care.",
-        "Reduced patient-service processing time by 24% by unifying scheduling, prescription, and benefits data behind Python and Node.js APIs with PostgreSQL and Redis caching.",
-        "Automated same-day reminder and cancellation updates through event-driven services, lowering manual outreach volume by 18% for MinuteClinic® operations teams.",
-        "Stabilized high-traffic care journeys at 99.94% availability by redesigning failure handling, health checks, and CloudWatch and Datadog alerting across containerized services.",
-        "Introduced 6 LLM prototypes for support summarization, Jest test generation, and workflow analysis, cutting selected investigation cycles by roughly 30%."
-      ],
-      "skills": [
-        "Python",
-        "React",
-        "TypeScript",
-        "Node.js",
-        "PostgreSQL",
-        "AWS",
-        "Docker",
-        "AI-Augmented Development"
-      ]
-    },
-    {
-      "title": "Senior Software Engineer",
-      "company": "BRIDGE Hospice",
-      "date_range": "02/2021 - 05/2023",
-      "job_type": "On-site",
-      "responsibilities": [
-        "Led architecture for 9 patient-intake and care-coordination workflows using React, C#/.NET, REST APIs, and SQL Server with input from nurses, physicians, intake coordinators, and billing teams.",
-        "Unified 5 legacy EHR, document, billing, and notification integrations behind secure service contracts, giving product and operations stakeholders one consistent patient-admission flow.",
-        "Established release ownership for 3 production applications through Jenkins CI/CD, Swagger/OpenAPI contracts, role-based access controls, audit logging, and cross-functional incident reviews."
-      ],
-      "achievements": [
-        "Streamlined referral validation and task routing to cut intake handoff time in half while preserving nurse review checkpoints and HIPAA-aligned controls.",
-        "Modernized 14 React screens and backend endpoints, improving first-pass intake completion by 27% across clinical and administrative users.",
-        "Reduced peak SQL response time by 38% through query restructuring, index tuning, and background-job scheduling for care-coordination dashboards.",
-        "Eliminated 42% of repeat production defects by expanding xUnit, Postman integration, and Cypress coverage across admission, document, and provider-communication paths.",
-        "Resolved one-third of admission-status escalations by exposing clearer workflow states and operational alerts to coordinators, clinicians, and product owners."
-      ],
-      "skills": [
-        "React",
-        "C#/.NET",
-        "REST APIs",
-        "SQL Server",
-        "Jenkins",
-        "Cypress",
-        "RBAC",
-        "EHR Integration"
-      ]
-    },
-    {
-      "title": "Software Engineer",
-      "company": "UMC Physicians",
-      "date_range": "07/2018 - 12/2020",
-      "job_type": "On-site",
-      "responsibilities": [
-        "Designed 8 MyTeamCare patient-portal capabilities across online scheduling, paperless registration, provider messaging, and medical-information access using JavaScript, React, REST APIs, and SQL.",
-        "Managed integration scope for 16 EHR and patient-management data mappings, aligning release acceptance with physicians, front-desk staff, analysts, and infrastructure teams.",
-        "Standardized delivery for 2 portal release trains through Git, Jira, API documentation, automated tests, and Linux deployment runbooks."
-      ],
-      "achievements": [
-        "Transformed appointment booking into a single-session guided flow, raising successful self-service scheduling by 33% without increasing call-center staffing.",
-        "Simplified paperless registration forms to reduce incomplete submissions by 22% while improving accessibility and mobile responsiveness.",
-        "Accelerated provider-directory searches to sub-second median response time through SQL tuning, data-model changes, and targeted caching.",
-        "Implemented secure session, authorization, and validation controls that lowered account-access incidents by approximately 20% across patient and staff users.",
-        "Revitalized 11 legacy portal modules, decreasing release-related regressions by 29% through reusable React components and integration tests."
-      ],
-      "skills": [
-        "JavaScript",
-        "React",
-        "HTML5",
-        "CSS3",
-        "REST APIs",
-        "SQL",
-        "Linux",
-        "Patient Engagement"
-      ]
-    },
-    {
-      "title": "Junior Software Engineer",
-      "company": "GermBlast",
-      "date_range": "07/2016 - 06/2018",
-      "job_type": "On-site",
-      "responsibilities": [
-        "Developed 10 scheduling and field-operations modules using JavaScript, C#/.NET, MySQL, and responsive web forms for dispatchers, technicians, customer-service staff, and operations leaders.",
-        "Controlled data quality through 15 validation and permission rules across customer, appointment, and service-record workflows with acceptance criteria from operations stakeholders.",
-        "Initiated a biweekly release cadence for internal web applications through Git-based reviews, unit testing, deployment checklists, and direct feedback sessions with operations users."
-      ],
-      "achievements": [
-        "Launched automated email notifications across every appointment state, reducing missed service visits by 17% for field teams and customers.",
-        "Generated 13 operational reports for invoicing, service history, and technician utilization, shortening weekly reconciliation by roughly 35%.",
-        "Solved recurring scheduling conflicts to lower duplicate bookings by 26% through database constraints and clearer assignment rules.",
-        "Improved dashboard load time by 41% by rewriting MySQL queries and limiting unnecessary data retrieval across service-location views.",
-        "Expanded role-based permissions across 19 user profiles, cutting unauthorized record-change incidents to zero during the final year of the role."
-      ],
-      "skills": [
-        "JavaScript",
-        "C#/.NET",
-        "MySQL",
-        "HTML5",
-        "CSS3",
-        "Git",
-        "Unit Testing",
-        "Service Scheduling"
-      ]
-    }
-  ],
-  "education": [
-    {
-      "degree": "Bachelor of Science in Computer Science",
-      "institution": "University of Kansas",
-      "location": "Lawrence, KS",
-      "date_range": "08/2012 - 05/2016"
-    }
-  ]
+    "summary": "Senior Software Engineer with 7+ years delivering full-stack healthcare platforms across React, Python, Node.js, PostgreSQL, REST APIs, and AWS. Built broker-facing and patient-facing web applications in regulated environments, accelerating appointment-flow completion by 31% and reducing patient-service processing time by 24%. Fluent with AI-powered developer tools, experienced navigating ambiguity in fast-paced product teams, and focused on scalable architectures that drive measurable outcomes for end users.",
+    "skills": [
+        {
+            "category": "Backend",
+            "items": [
+                "Python",
+                "Node.js",
+                "C#/.NET",
+                "REST APIs",
+                "Django",
+                "Microservices",
+                "Event-Driven Architecture",
+                "TypeScript"
+            ]
+        },
+        {
+            "category": "Frontend",
+            "items": [
+                "React.js",
+                "TypeScript",
+                "JavaScript",
+                "Redux",
+                "React Hooks",
+                "Single-Page Applications",
+                "Accessible Forms",
+                "Responsive Web Applications"
+            ]
+        },
+        {
+            "category": "AI & Automation",
+            "items": [
+                "Claude Code",
+                "Cursor",
+                "RAG-Backed Analysis",
+                "AI-Assisted Engineering",
+                "Jest Test Generation",
+                "Spec-Driven Development",
+                "Prompt Engineering",
+                "Automated Workflow Analysis"
+            ]
+        },
+        {
+            "category": "Cloud & DevOps",
+            "items": [
+                "AWS",
+                "Docker",
+                "Kubernetes",
+                "GitHub Actions",
+                "CI/CD",
+                "CloudWatch",
+                "Datadog",
+                "Jenkins"
+            ]
+        },
+        {
+            "category": "Database",
+            "items": [
+                "PostgreSQL",
+                "SQL Server",
+                "MySQL",
+                "Redis",
+                "SQL Query Optimization",
+                "Database Indexing",
+                "Data Modeling",
+                "Background Processing"
+            ]
+        },
+        {
+            "category": "Tools",
+            "items": [
+                "Git",
+                "Jira",
+                "Swagger/OpenAPI",
+                "Postman",
+                "Jest",
+                "Cypress",
+                "xUnit",
+                "Datadog"
+            ]
+        },
+        {
+            "category": "Industry",
+            "items": [
+                "Medicare Platforms",
+                "Broker CRM Workflows",
+                "Healthcare Software",
+                "Patient Engagement",
+                "HIPAA Compliance",
+                "PHI/PII",
+                "Eligibility & Benefits",
+                "Care Coordination"
+            ]
+        }
+    ],
+    "experience": [
+        {
+            "title": "Senior Software Engineer",
+            "company": "UnitedHealth Group",
+            "date_range": "05/2023 - Present",
+            "job_type": "Remote",
+            "responsibilities": [
+                "Architected 12 full-stack features across the UnitedHealthcare member experience on myuhc.com using React, TypeScript, Python, and Node.js microservices, serving UnitedHealthcare Medicare and UnitedHealthcare Community Plan members across eligibility, benefits, and scheduling journeys.",
+                "Directed 4 concurrent engineering workstreams spanning cross-functional product, design, clinical, and compliance stakeholders, translating Medicare coverage requirements into AWS-deployed, containerized releases across GitHub Actions CI/CD pipelines."
+            ],
+            "achievements": [
+                "Accelerated appointment-flow completion by 31% by redesigning React component state, simplifying eligibility step sequencing, and instrumenting abandonment funnels across UnitedHealthcare member scheduling journeys.",
+                "Reduced patient-service processing time by 24% by consolidating prescription, scheduling, and benefits data behind Python REST APIs with PostgreSQL query tuning and Redis caching.",
+                "Introduced spec-driven AI-assisted engineering using Claude Code, Cursor, and RAG-backed workflow analysis, shortening targeted investigation cycles by roughly 30% while maintaining code-review and human-validation gates.",
+                "Stabilized containerized myuhc.com services at 99.94% availability by strengthening health checks, failure-recovery logic, CloudWatch dashboards, and Datadog alerting across AWS workloads.",
+                "Automated same-day reminder and cancellation event flows through event-driven services, cutting manual outreach volume by 18% while preserving full auditability for PHI-sensitive member records."
+            ],
+            "skills": [
+                "React.js",
+                "TypeScript",
+                "Python",
+                "Node.js",
+                "PostgreSQL",
+                "AWS",
+                "Docker",
+                "Event-Driven Architecture"
+            ]
+        },
+        {
+            "title": "Senior Software Engineer",
+            "company": "BRIDGE Hospice",
+            "date_range": "02/2021 - 05/2023",
+            "job_type": "On-site",
+            "responsibilities": [
+                "Led full-stack development of 9 clinical intake and care-coordination features across the Patient Intake and Care Coordination Platform and Hospice Referral and Admission Platform using C#/.NET, React, TypeScript, REST APIs, and SQL Server with nurses, physicians, billing staff, and product stakeholders.",
+                "Standardized 5 EHR, billing, document, and notification integrations within the Clinical Document Management System, establishing Swagger/OpenAPI contracts, RBAC, audit logging, Jenkins CI/CD, and HIPAA-aligned data-handling patterns across all connected services."
+            ],
+            "achievements": [
+                "Modernized patient and staff interfaces across the Patient Intake and Care Coordination Platform, improving first-pass intake completion by 27% through React component reuse, TypeScript validation, accessible form controls, and clearer clinical task states.",
+                "Eliminated 38% of peak SQL response latency by restructuring care-coordination queries, tuning indexes, and offloading expensive operations to background processing jobs within the Hospice Referral and Admission Platform.",
+                "Streamlined referral triage and admission routing to cut intake handoff time in half while preserving clinician review checkpoints and traceable workflow states across the admission lifecycle.",
+                "Restructured automated test coverage across xUnit, Postman, and Cypress suites, lowering repeat production defects by 42% across admission, document, and provider-communication flows.",
+                "Resolved one-third of admission-status escalations by exposing clearer event states, REST API diagnostics, and operational alerts to coordinators, clinicians, and product owners within the Clinical Document Management System."
+            ],
+            "skills": [
+                "C#/.NET",
+                "React.js",
+                "TypeScript",
+                "REST APIs",
+                "SQL Server",
+                "RBAC",
+                "Cypress",
+                "EHR Integration"
+            ]
+        },
+        {
+            "title": "Software Engineer",
+            "company": "UMC Physicians",
+            "date_range": "07/2018 - 12/2020",
+            "job_type": "On-site",
+            "responsibilities": [
+                "Designed and delivered 8 full-stack capabilities within the MyTeamCare Patient Portal covering Online Scheduling, paperless registration, provider messaging, and health-information access using JavaScript, React, REST APIs, and SQL, collaborating with physicians, front-desk staff, and product analysts.",
+                "Standardized 16 EHR and patient-management data mappings across the MyTeamCare Mobile App and Provider Directory, aligning API contracts, validation rules, and release acceptance criteria with clinical and infrastructure stakeholders."
+            ],
+            "achievements": [
+                "Increased successful self-service scheduling by 33% by redesigning Online Scheduling into a guided single-session journey with improved React state management, validation feedback, and REST API error handling.",
+                "Revitalized Provider Directory search to sub-second median response time through SQL query restructuring, data-model changes, and targeted caching for frequently accessed provider records.",
+                "Simplified paperless registration within the MyTeamCare Patient Portal to reduce incomplete submissions by 22% through responsive layouts, accessible form controls, and reusable React components.",
+                "Implemented secure session, authorization, and input-validation controls that lowered account-access incidents by approximately 20% across patient and staff-facing portal workflows.",
+                "Transformed legacy portal delivery to reduce release regressions by 29% through reusable UI component patterns, API integration tests, Git-based code reviews, and Linux deployment runbooks."
+            ],
+            "skills": [
+                "JavaScript",
+                "React.js",
+                "REST APIs",
+                "SQL",
+                "Linux",
+                "Git",
+                "Responsive Web Applications",
+                "Patient Engagement"
+            ]
+        },
+        {
+            "title": "Junior Software Engineer",
+            "company": "GermBlast",
+            "date_range": "07/2016 - 06/2018",
+            "job_type": "On-site",
+            "responsibilities": [
+                "Developed 10 modules across the GermBlast® Field Service Operations Platform and Service Scheduling and Dispatch System using JavaScript, C#/.NET, MySQL, and responsive web forms, collaborating with dispatchers, technicians, customer-service staff, and operations leaders.",
+                "Established 15 data-validation and permission rules across the Technician Operations Dashboard covering customer, appointment, and service-record workflows using SQL constraints, role-based access controls, and Git-based acceptance reviews."
+            ],
+            "achievements": [
+                "Launched automated appointment-state notifications across the Service Scheduling and Dispatch System that reduced missed service visits by 17% for customers, dispatchers, and field technicians.",
+                "Improved Technician Operations Dashboard load time by 41% by rewriting MySQL queries, eliminating redundant joins, and limiting unnecessary service-location data retrieval.",
+                "Solved scheduling conflicts within the GermBlast® Field Service Operations Platform to lower duplicate bookings by 26% through MySQL constraints, validation logic, and clearer technician-assignment rules.",
+                "Generated 13 operational reports covering invoicing, service history, and technician utilization, shortening weekly reconciliation cycles by roughly 35% for operations leadership.",
+                "Expanded role-based permissions across 19 user profiles within the Technician Operations Dashboard, reducing unauthorized record changes to zero during the final year of the role."
+            ],
+            "skills": [
+                "JavaScript",
+                "C#/.NET",
+                "MySQL",
+                "HTML5",
+                "CSS3",
+                "Git",
+                "Unit Testing",
+                "Service Scheduling"
+            ]
+        }
+    ],
+    "education": [
+        {
+            "degree": "Bachelor of Science in Computer Science",
+            "institution": "University of Kansas",
+            "location": "Lawrence, KS",
+            "date_range": "08/2012 - 05/2016"
+        }
+    ]
 }
 
 
@@ -285,8 +294,8 @@ Normalize the JD title before using it in the resume.
 
 The normalized title must:
 - Be used as the root-level resume "title".
-- Be used EXACTLY as the "title" for the CVS Health role if CVS Health exists in the resume.
-- If CVS Health does not exist, use the normalized title EXACTLY for the most recent experience entry.
+- Be used EXACTLY as the "title" for the UnitedHealth Group role if UnitedHealth Group exists in the resume.
+- If UnitedHealth Group does not exist, use the normalized title EXACTLY for the most recent experience entry.
 - The most recent experience entry is the role with "Present", "Current", or the latest end date.
 - Prefer standard individual-contributor engineering titles.
 - Never output noisy, over-specific, team-specific, or level-coded titles.
@@ -393,7 +402,7 @@ Normalized title: "Senior Platform Engineer"
 
 Final title application:
 - Set root-level "title" to the normalized title.
-- Set CVS Health role "title" to the exact same normalized title if CVS Health exists.
+- Set UnitedHealth Group role "title" to the exact same normalized title if UnitedHealth Group exists.
 - Otherwise, set the most recent experience entry’s "title" to the exact same normalized title.
 - Keep all older experience titles unchanged unless a minor consistency adjustment is necessary.
 - Preserve all company names and date ranges exactly.
@@ -542,8 +551,8 @@ For each role:
 - Keep the original company name.
 - Keep the original date range.
 - Keep the original job title for older roles unless a minor consistency adjustment is necessary.
-- For CVS Health, use the normalized JD title exactly if CVS Health exists.
-- If CVS Health does not exist, use the normalized JD title exactly for the most recent role.
+- For UnitedHealth Group, use the normalized JD title exactly if UnitedHealth Group exists.
+- If UnitedHealth Group does not exist, use the normalized JD title exactly for the most recent role.
 - Rewrite every responsibility.
 - Rewrite every achievement.
 - Do NOT copy bullets from the input resume.
@@ -560,7 +569,7 @@ For each role:
 
 Use only these exact company-to-product mappings:
 
-CVS Health: CVS Virtual Care®, MinuteClinic®, CVS Health® app, Digital Scheduling and Patient Engagement Platform
+UnitedHealth Group: UnitedHealthcare, myuhc.com / UnitedHealthcare member experience, UnitedHealthcare Medicare, UnitedHealthcare Community Plan
 
 BRIDGE Hospice: Patient Intake and Care Coordination Platform, Hospice Referral and Admission Platform, Clinical Document Management System
 
@@ -670,8 +679,8 @@ Before returning the JSON, silently verify:
 - Field order matches the required structure.
 - Contact information is preserved exactly.
 - Root-level "title" uses the normalized JD title.
-- CVS Health role title uses the exact normalized JD title if CVS Health exists.
-- If CVS Health does not exist, the most recent role title uses the exact normalized JD title.
+- UnitedHealth Group role title uses the exact normalized JD title if UnitedHealth Group exists.
+- If UnitedHealth Group does not exist, the most recent role title uses the exact normalized JD title.
 - Every experience entry has EXACTLY 2 responsibilities.
 - Every experience entry has EXACTLY 5 achievements.
 - Every experience entry has EXACTLY 8 skills.
