@@ -237,6 +237,17 @@ export const generateCoverLetter = async (id: string) => {
   return fetchBlobPost(`/api/resumes/${id}/generate-cover-letter`);
 };
 
+export type CoverLetterFormat = "pdf" | "txt";
+
+export const downloadCoverLetter = async (
+  id: string,
+  format: CoverLetterFormat = "pdf",
+) => {
+  return fetchBlobDownload(
+    `/api/resumes/${id}/download-cover-letter?format=${format}`,
+  );
+};
+
 export const retryResume = async (id: string) => {
   const res = await api.post<{ message: string }>(`/api/resumes/${id}/retry`);
   return res.data;

@@ -3247,10 +3247,11 @@ CANDIDATE_BACKGROUND:
     return normalized.replace(/\\n/g, '\n').trim();
   }
 
-  async generateCoverLetterForResume(
-    id: string,
-    userId: string,
-  ): Promise<{ pdfBuffer: Buffer; userName: string }> {
+  async ensureCoverLetterText(id: string, userId: string): Promise<{
+    coverLetterText: string;
+    userName: string;
+    createdAt: Date;
+  }> {
     const resume = await this.resumeModel.findOne({ _id: id, userId }).exec();
 
     if (!resume) {
@@ -3299,15 +3300,43 @@ CANDIDATE_BACKGROUND:
       await this.updateCoverLetter(id, userId, formattedCoverLetter);
     }
 
+    return {
+      coverLetterText: formattedCoverLetter,
+      userName: user.name,
+      createdAt: resume.createdAt,
+    };
+  }
+
+  async getCoverLetterText(id: string, userId: string): Promise<string> {
+    const resume = await this.resumeModel.findOne({ _id: id, userId }).exec();
+
+    if (!resume) {
+      throw new NotFoundException(`Resume with id ${id} not found`);
+    }
+
+    if (!resume.coverLetter?.trim()) {
+      throw new NotFoundException('Cover letter not found for this resume');
+    }
+
+    return this.normalizeCoverLetterText(resume.coverLetter);
+  }
+
+  async generateCoverLetterForResume(
+    id: string,
+    userId: string,
+  ): Promise<{ pdfBuffer: Buffer; userName: string }> {
+    const { coverLetterText, userName, createdAt } =
+      await this.ensureCoverLetterText(id, userId);
+
     const pdfBuffer = await this.generateCoverLetterPDF(
-      user.name,
-      formattedCoverLetter,
-      resume.createdAt,
+      userName,
+      coverLetterText,
+      createdAt,
     );
 
     return {
       pdfBuffer,
-      userName: user.name,
+      userName,
     };
   }
 
@@ -3329,7 +3358,6 @@ CANDIDATE_BACKGROUND:
       throw new NotFoundException('Cover letter not found for this resume');
     }
 
-
     const user = await this.userModel.findOne({ _id: resume?.userId }).exec();
 
     if (!user) {
@@ -3340,16 +3368,13 @@ CANDIDATE_BACKGROUND:
       throw new NotFoundException('User name not found for this resume');
     }
 
-    let coverLetterText = this.normalizeCoverLetterText(resume.coverLetter);
+    const coverLetterText = this.normalizeCoverLetterText(resume.coverLetter);
 
-    // Generate PDF from the stored cover letter text
-    const pdfBuffer = await this.generateCoverLetterPDF(
+    return this.generateCoverLetterPDF(
       user.name,
       coverLetterText,
       resume.createdAt,
     );
-
-    return pdfBuffer;
   }
 
   async downloadResumePDF(
